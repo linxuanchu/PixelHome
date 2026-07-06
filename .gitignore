@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+data/*.db-journal
+data/*.db
+.venv/
+runs/
+*.pt
+/.build-deps/
+/.tools/
+/build/
+/dist/
