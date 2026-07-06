@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from smart_home.adapters import DemoVisionAdapter, SimulatedHomeAdapter, UltralyticsVisionAdapter
+from smart_home.adapters import DemoVisionAdapter, SimulatedHomeAdapter, SpecializedVisionAdapter, UltralyticsVisionAdapter
 from smart_home.database import Database
 from smart_home.service import SmartHomeService
 from smart_home.climate import ClimatePolicy
@@ -107,6 +107,39 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(["person"], result["labels"])
         self.assertEqual("yolo", result["mode"])
         self.assertEqual((8, 8), model.received_size)
+
+    def test_specialized_adapter_filters_and_normalizes_labels(self):
+        import base64
+        import io
+        from types import SimpleNamespace
+        from PIL import Image
+
+        image = Image.new("RGB", (8, 8), "white")
+        buffer = io.BytesIO(); image.save(buffer, format="PNG")
+        image_data = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+        class Values:
+            def __init__(self, values): self.values = values
+            def tolist(self): return self.values
+
+        class Model:
+            def __init__(self, names, classes, confidences):
+                self.names, self.classes, self.confidences = names, classes, confidences
+            def predict(self, image, **kwargs):
+                return [SimpleNamespace(
+                    names=self.names,
+                    boxes=SimpleNamespace(cls=Values(self.classes), conf=Values(self.confidences)),
+                )]
+
+        adapter = SpecializedVisionAdapter(
+            drone_model=Model({0: "drone", 1: "bird"}, [0, 1], [0.91, 0.99]),
+            extinguisher_model=Model({0: "manual call point", 1: "fire extinguisher"}, [0, 1], [0.95, 0.88]),
+        )
+        result = adapter.detect("upload", image_data)
+        self.assertEqual(["drone", "fire_extinguisher"], result["labels"])
+        self.assertEqual(2, result["count"])
+        self.assertEqual(0.91, result["confidence"])
+        self.assertEqual("specialized", result["mode"])
 
 
 if __name__ == "__main__":
