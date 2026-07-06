@@ -100,3 +100,58 @@ class UltralyticsVisionAdapter(DemoVisionAdapter):
             "mode": self.mode,
             "model": self.model_path,
         }
+
+
+class SpecializedVisionAdapter(DemoVisionAdapter):
+    """Two-model detector for the required drone and fire-extinguisher classes."""
+
+    mode = "specialized"
+
+    def __init__(
+        self,
+        drone_model_path="drone_yolo11n.pt",
+        extinguisher_model_path="fire_extinguisher_yolov8.pt",
+        drone_model=None,
+        extinguisher_model=None,
+        confidence=0.25,
+    ):
+        if drone_model is None or extinguisher_model is None:
+            try:
+                from ultralytics import YOLO
+            except ImportError as error:
+                raise RuntimeError("Specialized vision requires: pip install -r requirements-ai.txt") from error
+            drone_model = drone_model or YOLO(drone_model_path)
+            extinguisher_model = extinguisher_model or YOLO(extinguisher_model_path)
+        self.models = (
+            ("drone", drone_model, {"drone"}),
+            ("fire_extinguisher", extinguisher_model, {"fire extinguisher", "fire_extinguisher"}),
+        )
+        self.model_paths = {
+            "drone": str(drone_model_path),
+            "fire_extinguisher": str(extinguisher_model_path),
+        }
+        self.confidence = confidence
+
+    def detect(self, source="uploaded-image", image_data=None):
+        if not image_data:
+            raise ValueError("Specialized vision mode requires image_data")
+        image = UltralyticsVisionAdapter.decode_image(image_data)
+        labels = []
+        confidences = []
+        for canonical_label, model, accepted_names in self.models:
+            results = model.predict(image, verbose=False, conf=self.confidence)
+            for result in results:
+                for class_id, confidence in zip(result.boxes.cls.tolist(), result.boxes.conf.tolist()):
+                    detected_name = str(result.names[int(class_id)]).strip().lower()
+                    if detected_name in accepted_names:
+                        labels.append(canonical_label)
+                        confidences.append(float(confidence))
+        return {
+            "source": source,
+            "labels": list(dict.fromkeys(labels)),
+            "confidence": round(max(confidences, default=0.0), 4),
+            "count": len(labels),
+            "mode": self.mode,
+            "model": "specialized-ensemble",
+            "models": self.model_paths,
+        }
