@@ -7,7 +7,18 @@
 - `drone`：无人机
 - `fire_extinguisher`：灭火器
 
-小组成员需要自行收集图片并完成YOLO标注与训练。公开图片只能作为起始数据，必须检查授权、清除重复图和错误图，并统一为以上两个类别。训练集、验证集、测试集建议按 `70% / 20% / 10%` 划分，同一视频或连拍序列不得跨集合，避免数据泄漏。最终验收需展示原始图片、标注示例、训练结果以及未参与训练的新图片识别效果。
+项目优先使用来源、许可和验证材料清楚的现成检测权重，再用现场图片验证；只有现成模型未达标时才进行增量微调。测试图片必须检查授权、清除重复图和错误图，并统一为以上两个类别。独立测试集不得与模型已知训练来源重叠，最终验收需展示模型来源、光照测试和未参与训练的新图片识别效果。
+
+当前已采用两个质量可核验的现成专用权重作为正式基线，不从零训练：无人机使用YOLO11n Drone Detector，灭火器使用鲁尔大学FireSafetyNet YOLOv8。模型筛选和光照测试见 [MODEL_EVALUATION.md](MODEL_EVALUATION.md)。
+
+下载权重并启动专用模式：
+
+```powershell
+python download_specialized_models.py
+python run.py --vision specialized
+```
+
+权重文件不会提交Git。服务输出统一类别名 `drone` 和 `fire_extinguisher`。
 
 ## Windows桌面程序
 
