@@ -11,14 +11,16 @@
 
 当前已采用两个质量可核验的现成专用权重作为正式基线，不从零训练：无人机使用YOLO11n Drone Detector，灭火器使用鲁尔大学FireSafetyNet YOLOv8。模型筛选和光照测试见 [MODEL_EVALUATION.md](MODEL_EVALUATION.md)。
 
-下载权重并启动专用模式：
+仓库已包含经过验证的基线权重，组员克隆后安装AI依赖即可启动专用模式：
 
 ```powershell
-python download_specialized_models.py
+python -m pip install -r requirements-ai.txt
 python run.py --vision specialized
 ```
 
-权重文件不会提交Git。服务输出统一类别名 `drone` 和 `fire_extinguisher`。
+若权重损坏或被误删，可运行 `python download_specialized_models.py` 恢复。服务输出统一类别名 `drone` 和 `fire_extinguisher`。
+
+当前发布权重固定存放在 `models/baseline/`。后续自己的训练图片、标签和训练缓存不直接提交Git；数据集规则见 [datasets/README.md](datasets/README.md)，模型发布规则见 [models/README.md](models/README.md)。只有完成独立测试、记录来源和版本的候选权重才进入共享仓库。
 
 ## Windows桌面程序
 

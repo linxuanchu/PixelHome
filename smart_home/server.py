@@ -19,8 +19,8 @@ def create_service(
     db_path=None,
     vision_mode="demo",
     model_path="yolo11n.pt",
-    drone_model_path="drone_yolo11n.pt",
-    extinguisher_model_path="fire_extinguisher_yolov8.pt",
+    drone_model_path="models/baseline/drone_yolo11n.pt",
+    extinguisher_model_path="models/baseline/fire_extinguisher_yolov8.pt",
 ):
     if vision_mode == "specialized":
         vision = SpecializedVisionAdapter(drone_model_path, extinguisher_model_path)
@@ -140,11 +140,15 @@ def build_server(
     extinguisher_model_path=None,
 ):
     model = Path(model_path) if model_path else ROOT / "yolo11n.pt"
-    drone_model = Path(drone_model_path) if drone_model_path else ROOT / "drone_yolo11n.pt"
+    drone_model = (
+        Path(drone_model_path)
+        if drone_model_path
+        else ROOT / "models" / "baseline" / "drone_yolo11n.pt"
+    )
     extinguisher_model = (
         Path(extinguisher_model_path)
         if extinguisher_model_path
-        else ROOT / "fire_extinguisher_yolov8.pt"
+        else ROOT / "models" / "baseline" / "fire_extinguisher_yolov8.pt"
     )
     Handler.service = create_service(db_path, vision_mode, model, drone_model, extinguisher_model)
     Handler.runtime_mode = vision_mode
@@ -158,8 +162,11 @@ def main():
     parser.add_argument("--db")
     parser.add_argument("--vision", choices=("demo", "yolo", "specialized"), default="demo")
     parser.add_argument("--model", default="yolo11n.pt")
-    parser.add_argument("--drone-model", default="drone_yolo11n.pt")
-    parser.add_argument("--extinguisher-model", default="fire_extinguisher_yolov8.pt")
+    parser.add_argument("--drone-model", default="models/baseline/drone_yolo11n.pt")
+    parser.add_argument(
+        "--extinguisher-model",
+        default="models/baseline/fire_extinguisher_yolov8.pt",
+    )
     args = parser.parse_args()
     server = build_server(
         args.host,

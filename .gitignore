@@ -5,6 +5,10 @@ data/*.db
 .venv/
 runs/
 *.pt
+!models/baseline/drone_yolo11n.pt
+!models/baseline/fire_extinguisher_yolov8.pt
+datasets/*
+!datasets/README.md
 /.build-deps/
 /.tools/
 /.vision-deps/

@@ -6,10 +6,10 @@
 
 | 类别 | 模型 | 来源 | 许可 | 本机文件 |
 |---|---|---|---|---|
-| `drone` | YOLO11n Drone Detector | https://huggingface.co/marie-kjelberg/drone-detector | AGPL-3.0 | `drone_yolo11n.pt` |
-| `fire_extinguisher` | FireSafetyNet Service 1 YOLOv8 | https://doi.org/10.5281/zenodo.13358169 | 数据记录为 CC BY 4.0；项目使用前仍需保留作者引用 | `fire_extinguisher_yolov8.pt` |
+| `drone` | YOLO11n Drone Detector | https://huggingface.co/marie-kjelberg/drone-detector | AGPL-3.0 | `models/baseline/drone_yolo11n.pt` |
+| `fire_extinguisher` | FireSafetyNet Service 1 YOLOv8 | https://doi.org/10.5281/zenodo.13358169 | 数据记录为 CC BY 4.0；项目使用前仍需保留作者引用 | `models/baseline/fire_extinguisher_yolov8.pt` |
 
-FireSafetyNet原始检测包的MD5为 `c4765acd9b7c6e8eb0f72113af766d75`。下载脚本会校验该值并只提取 `best.pt`。权重不进入Git仓库。
+FireSafetyNet原始检测包的MD5为 `c4765acd9b7c6e8eb0f72113af766d75`。下载脚本会校验该值并只提取 `best.pt`。两份已验证基线权重进入Git，便于小组离线协作；其他实验权重仍默认忽略。
 
 ## 淘汰方案
 
