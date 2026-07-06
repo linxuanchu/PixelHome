@@ -7,5 +7,7 @@ runs/
 *.pt
 /.build-deps/
 /.tools/
+/.vision-deps/
+/.vision-deps-src/
 /build/
 /dist/
