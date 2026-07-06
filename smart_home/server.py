@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from .adapters import DemoVisionAdapter, SimulatedHomeAdapter, UltralyticsVisionAdapter
+from .adapters import DemoVisionAdapter, SimulatedHomeAdapter, SpecializedVisionAdapter, UltralyticsVisionAdapter
 from .database import Database
 from .paths import data_root, resource_root
 from .service import SmartHomeService
@@ -15,8 +15,19 @@ ROOT = resource_root()
 WEB = ROOT / "web"
 
 
-def create_service(db_path=None, vision_mode="demo", model_path="yolo11n.pt"):
-    vision = UltralyticsVisionAdapter(model_path) if vision_mode == "yolo" else DemoVisionAdapter()
+def create_service(
+    db_path=None,
+    vision_mode="demo",
+    model_path="yolo11n.pt",
+    drone_model_path="drone_yolo11n.pt",
+    extinguisher_model_path="fire_extinguisher_yolov8.pt",
+):
+    if vision_mode == "specialized":
+        vision = SpecializedVisionAdapter(drone_model_path, extinguisher_model_path)
+    elif vision_mode == "yolo":
+        vision = UltralyticsVisionAdapter(model_path)
+    else:
+        vision = DemoVisionAdapter()
     service = SmartHomeService(
         Database(Path(db_path) if db_path else data_root() / "pixel_home.db"),
         SimulatedHomeAdapter(),
@@ -119,9 +130,23 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
 
-def build_server(host="127.0.0.1", port=8000, db_path=None, vision_mode="demo", model_path=None):
+def build_server(
+    host="127.0.0.1",
+    port=8000,
+    db_path=None,
+    vision_mode="demo",
+    model_path=None,
+    drone_model_path=None,
+    extinguisher_model_path=None,
+):
     model = Path(model_path) if model_path else ROOT / "yolo11n.pt"
-    Handler.service = create_service(db_path, vision_mode, model)
+    drone_model = Path(drone_model_path) if drone_model_path else ROOT / "drone_yolo11n.pt"
+    extinguisher_model = (
+        Path(extinguisher_model_path)
+        if extinguisher_model_path
+        else ROOT / "fire_extinguisher_yolov8.pt"
+    )
+    Handler.service = create_service(db_path, vision_mode, model, drone_model, extinguisher_model)
     Handler.runtime_mode = vision_mode
     return ThreadingHTTPServer((host, port), Handler)
 
@@ -131,10 +156,20 @@ def main():
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default=8000, type=int)
     parser.add_argument("--db")
-    parser.add_argument("--vision", choices=("demo", "yolo"), default="demo")
+    parser.add_argument("--vision", choices=("demo", "yolo", "specialized"), default="demo")
     parser.add_argument("--model", default="yolo11n.pt")
+    parser.add_argument("--drone-model", default="drone_yolo11n.pt")
+    parser.add_argument("--extinguisher-model", default="fire_extinguisher_yolov8.pt")
     args = parser.parse_args()
-    server = build_server(args.host, args.port, args.db, args.vision, args.model)
+    server = build_server(
+        args.host,
+        args.port,
+        args.db,
+        args.vision,
+        args.model,
+        args.drone_model,
+        args.extinguisher_model,
+    )
     print(f"Pixel Home is running at http://{args.host}:{args.port}")
     server.serve_forever()
 
