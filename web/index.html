@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pixel Home | 智能家居控制台</title>
   <link rel="stylesheet" href="/styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -24,17 +32,21 @@
 
     <section class="dashboard-grid">
       <article class="scene-panel panel">
-        <div class="panel-heading"><div><span class="kicker">LIVE ROOM</span><h2>房屋状态</h2></div><span class="mode-tag">SIM</span></div>
-        <div class="pixel-room" aria-label="像素风智能家居实时状态场景">
-          <div class="sun"></div><div class="cloud cloud-a"></div><div class="cloud cloud-b"></div>
-          <div class="house">
-            <div class="roof"></div>
-            <div class="window"><span></span><span></span><span></span><span></span></div>
-            <div class="door" id="sceneDoor"><div class="knob"></div></div>
-            <div class="lamp" id="sceneLamp"></div>
-            <div class="fan" id="sceneFan"><i></i><i></i><i></i><b></b></div>
+        <div class="panel-heading"><div><span class="kicker">LIVE ROOM</span><h2>房屋状态</h2></div><div class="view-toggles"><button class="mode-tag active" id="btn3D" title="3D 实景视图">3D</button><button class="mode-tag" id="btnPixel" title="像素风视图">像素</button><span class="mode-tag">SIM</span></div></div>
+        <div class="pixel-room" id="roomContainer" aria-label="智能家居实时状态场景">
+          <div class="room3d-layer" id="room3dLayer"><div class="ctrl-hint">🖱 左键旋转 · 滚轮缩放 · 右键平移 · G 切换墙壁 · R 重置视角</div></div>
+          <canvas id="glSky"></canvas>
+          <div class="pixel-layer" id="pixelLayer">
+            <div class="sun"></div><div class="cloud cloud-a"></div><div class="cloud cloud-b"></div>
+            <div class="house">
+              <div class="roof"></div>
+              <div class="window"><span></span><span></span><span></span><span></span></div>
+              <div class="door" id="sceneDoor"><div class="knob"></div></div>
+              <div class="lamp" id="sceneLamp"></div>
+              <div class="fan" id="sceneFan"><i></i><i></i><i></i><b></b></div>
+            </div>
+            <div class="grass"></div>
           </div>
-          <div class="grass"></div>
           <div class="scene-temp"><strong id="sceneTemp">--.-°</strong><span>室内温度</span></div>
           <div class="home-score"><strong id="homeScore">--</strong><span id="homeScoreLabel">计算中</span></div>
         </div>
@@ -114,5 +126,7 @@
   </main>
   <div id="toast" class="toast" role="status"></div>
   <script src="/app.js"></script>
+  <script src="/gl-sky.js"></script>
+  <script type="module" src="/room3d.js"></script>
 </body>
 </html>

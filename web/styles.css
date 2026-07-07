@@ -27,7 +27,29 @@ main { max-width: 1440px; margin: auto; padding: 30px clamp(18px, 4vw, 56px) 60p
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); gap: 18px; align-items: start; }
 .panel { background: var(--panel); border: 3px solid var(--line); box-shadow: var(--shadow); padding: 18px; min-width: 0; }
 .panel-heading { min-height: 42px; display: flex; justify-content: space-between; align-items: start; gap: 12px; }.panel-heading h2 { margin: 3px 0 0; font-size: 19px; }.panel-heading > span { color: var(--muted); font-size: 12px; }.mode-tag { padding: 4px 7px; color: var(--ink) !important; background: var(--yellow); border: 2px solid var(--line); font: 700 11px Consolas, monospace; }
-.pixel-room { position: relative; height: 280px; margin-top: 14px; overflow: hidden; background: var(--sky); border: 3px solid var(--line); image-rendering: pixelated; }
+.pixel-room { position: relative; height: 380px; margin-top: 14px; overflow: hidden; background: var(--sky); border: 3px solid var(--line); image-rendering: pixelated; }
+#glSky { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; image-rendering: pixelated; pointer-events: none; }
+/* ── 3D 视图层 ── */
+.room3d-layer { position: absolute; inset: 0; z-index: 2; display: none; }
+.room3d-layer canvas { display: block; width: 100%; height: 100%; }
+/* 3D 控制提示 */
+.ctrl-hint { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 3; padding: 5px 10px; background: rgba(32,40,61,.75); color: #fff; border-radius: 4px; font: 10px Consolas,monospace; pointer-events: none; opacity: .8; }
+.pixel-layer { position: absolute; inset: 0; z-index: 1; }
+/* ── 3D 模式下覆盖层退让 ── */
+.pixel-room.view-3d .scene-temp { z-index: 1; pointer-events: none; }
+.pixel-room.view-3d .home-score { z-index: 1; pointer-events: none; }
+/* ── 模式切换 ── */
+.view-toggles { display: flex; gap: 4px; align-items: center; }
+.view-toggles .mode-tag { cursor: pointer; user-select: none; }
+.view-toggles .mode-tag:not(.active):not(:last-child) { background: #eceef1; opacity: .6; }
+/* ── 3D 模式 ── */
+.pixel-room.view-3d .pixel-layer { display: none; }
+.pixel-room.view-3d .room3d-layer { display: block; }
+.pixel-room.view-3d #glSky { display: none; }
+/* ── 像素模式── */
+.pixel-room.view-pixel .pixel-layer { display: block; }
+.pixel-room.view-pixel .room3d-layer { display: none; }
+.pixel-room.view-pixel #glSky { display: block; }
 .sun { position: absolute; top: 25px; right: 28px; width: 38px; height: 38px; background: var(--yellow); border: 3px solid var(--line); box-shadow: 8px 0 0 var(--yellow), -8px 0 0 var(--yellow), 0 8px 0 var(--yellow), 0 -8px 0 var(--yellow); }
 .cloud { position: absolute; width: 62px; height: 18px; background: white; border: 3px solid var(--line); }.cloud::before { content: ""; position: absolute; width: 24px; height: 20px; left: 9px; bottom: 12px; background: white; border: 3px solid var(--line); border-bottom: 0; }.cloud-a { top: 40px; left: 8%; }.cloud-b { top: 92px; right: 16%; transform: scale(.7); }
 .grass { position: absolute; left: 0; right: 0; bottom: 0; height: 45px; background: #70bd65; border-top: 3px solid var(--line); background-image: linear-gradient(90deg, transparent 50%, rgba(32,40,61,.09) 50%); background-size: 20px 20px; }
@@ -49,5 +71,5 @@ main { max-width: 1440px; margin: auto; padding: 30px clamp(18px, 4vw, 56px) 60p
 .text-command { margin-top: 10px; padding: 6px 9px; border: 2px solid var(--line); background: white; cursor: pointer; font-size: 11px; }
 @keyframes blink { 50% { opacity: .45; } } @keyframes spin { to { transform: rotate(360deg); } } @keyframes scan { to { top: 100%; } }
 @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; }.scene-panel { order: -2; }.control-panel { order: -1; }.admin-panel,.security-panel,.settings-panel { grid-column: 1; }.settings-form { grid-template-columns: 1fr 1fr; }.capability-note { flex-direction: column; } }
-@media (max-width: 560px) { .topbar { min-height: 62px; }.system-status span:last-child { display: none; }.intro { align-items: start; flex-direction: column; }.intro h1 { font-size: 26px; }.primary { width: 100%; }.panel { padding: 14px; box-shadow: 3px 3px 0 var(--line); }.pixel-room { height: 240px; }.house { transform: translateX(-50%) scale(.82); transform-origin: bottom; }.state-strip { grid-template-columns: repeat(2,1fr); }.state-strip div:nth-child(2) { border-right: 0; }.state-strip div:nth-child(-n+2) { border-bottom: 2px solid var(--line); }.face-list { grid-template-columns: 1fr; }.face-card { display: grid; grid-template-columns: 42px 1fr; text-align: left; align-items: center; }.avatar { grid-row: span 2; margin: 0; }.face-card span { grid-column: 2; }.scene-temp { left: 12px; transform: none; }.home-score { right: 8px; }.admin-form,.settings-form { grid-template-columns: 1fr; }.form-actions { flex-direction: column; }.form-actions button { width: 100%; } }
+@media (max-width: 560px) { .topbar { min-height: 62px; }.system-status span:last-child { display: none; }.intro { align-items: start; flex-direction: column; }.intro h1 { font-size: 26px; }.primary { width: 100%; }.panel { padding: 14px; box-shadow: 3px 3px 0 var(--line); }.pixel-room { height: 280px; }.house { transform: translateX(-50%) scale(.82); transform-origin: bottom; }.state-strip { grid-template-columns: repeat(2,1fr); }.state-strip div:nth-child(2) { border-right: 0; }.state-strip div:nth-child(-n+2) { border-bottom: 2px solid var(--line); }.face-list { grid-template-columns: 1fr; }.face-card { display: grid; grid-template-columns: 42px 1fr; text-align: left; align-items: center; }.avatar { grid-row: span 2; margin: 0; }.face-card span { grid-column: 2; }.scene-temp { left: 12px; transform: none; }.home-score { right: 8px; }.admin-form,.settings-form { grid-template-columns: 1fr; }.form-actions { flex-direction: column; }.form-actions button { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

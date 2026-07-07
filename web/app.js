@@ -163,3 +163,87 @@ $("#imageInput").addEventListener("change", event => {
 });
 refresh();
 setInterval(refresh, 15000);
+
+// ═══════════════════════════════════════════
+// 3D 视图集成
+// ═══════════════════════════════════════════
+let view3dActive = true;
+let room3dReady = false;
+
+// 显示加载状态
+function show3dLoading(msg) {
+  const layer = $('#room3dLayer');
+  if (layer) layer.innerHTML = `<div style="display:grid;place-items:center;height:100%;color:#677087;font:13px Consolas,monospace">${msg}</div>`;
+}
+
+// 等待 room3d 模块就绪后初始化
+window.addEventListener('room3d-module-ready', async () => {
+  show3dLoading('3D 场景加载中...');
+  try {
+    await window.Room3D.init('#room3dLayer');
+    room3dReady = true;
+    syncTo3D();
+    console.log('[app] 3D 场景初始化完成');
+  } catch (e) {
+    console.warn('[app] 3D 初始化失败，回退到像素模式:', e.message);
+    switchView('pixel');
+    room3dReady = false;
+  }
+});
+
+// 兜底：15 秒后模块仍未就绪则放弃
+setTimeout(() => {
+  if (!window.Room3D) {
+    console.warn('[app] 3D 模块加载超时（CDN 可能不可达），切换像素模式');
+    switchView('pixel');
+  }
+}, 15000);
+
+// 视图切换
+$('#btn3D').addEventListener('click', () => switchView('3d'));
+$('#btnPixel').addEventListener('click', () => switchView('pixel'));
+
+function switchView(mode) {
+  view3dActive = mode === '3d';
+  $('#btn3D').classList.toggle('active', view3dActive);
+  $('#btnPixel').classList.toggle('active', !view3dActive);
+  $('#roomContainer').classList.toggle('view-3d', view3dActive);
+  $('#roomContainer').classList.toggle('view-pixel', !view3dActive);
+
+  // 3D 模式下触发 resize 让 Three.js 画布正确
+  if (view3dActive && room3dReady) {
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+    syncTo3D();
+  }
+}
+
+// 默认 3D 模式
+switchView('3d');
+show3dLoading('等待 3D 模块就绪...');
+
+// 将当前 UI 状态同步到 3D 场景
+function syncTo3D() {
+  if (!room3dReady || !window.Room3D) return;
+  const home = {
+    door: $('#doorState').textContent,
+    light: parseInt($('#lightState').textContent) || 0,
+    fan: $('#fanToggle').checked,
+    window: $('#windowState').textContent,
+  };
+  window.Room3D.updateDoor(home.door === '已打开');
+  window.Room3D.updateLight(home.light);
+  window.Room3D.updateFan(home.fan);
+  window.Room3D.updateWindow(home.window);
+}
+
+// 增强 renderHome：同时更新 3D 场景
+const _originalRenderHome = renderHome;
+renderHome = function(home) {
+  _originalRenderHome(home);
+  if (room3dReady && window.Room3D) {
+    window.Room3D.updateDoor(home.door === 'open');
+    window.Room3D.updateLight(home.light);
+    window.Room3D.updateFan(home.fan);
+    window.Room3D.updateWindow(home.window);
+  }
+};
