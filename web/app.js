@@ -21,6 +21,7 @@ function renderHome(home) {
   $("#temperature").textContent = `${home.temperature} °C`;
   $("#sceneTemp").textContent = `${home.temperature}°`;
   $("#doorState").textContent = stateText(home.door);
+  $("[data-device='door']").textContent = home.door === 'open' ? '关门' : '开门';
   $("#windowState").textContent = stateText(home.window);
   $("#lightState").textContent = `${home.light}%`;
   $("#lightOutput").textContent = `${home.light}%`; $("#lightSlider").value = home.light;
@@ -85,6 +86,7 @@ async function refresh() {
   try {
     const [dashboard, people, history, suspects, settings, storage] = await Promise.all([api("/api/dashboard"), api("/api/people"), api("/api/history?limit=80"), api("/api/admin/suspects"), api("/api/admin/settings"), api("/api/admin/storage")]);
     renderHome(dashboard.home); renderScore(dashboard.home_score); renderPeople(people); renderAdminPeople(people); renderSuspects(suspects); renderSettings(settings, storage); renderEvents(dashboard.events); renderChart(history);
+    renderAlerts(dashboard.alerts || {});
     $("#connectionText").textContent = "模拟空间在线";
   } catch (error) { $("#connectionText").textContent = "连接中断"; toast(error.message); }
 }
@@ -123,20 +125,69 @@ async function recognize(faceKey) {
   const resultNode = $("#accessResult"); resultNode.className = "access-result neutral"; resultNode.textContent = "识别中...";
   const result = await post("/api/access/recognize", { face_key: faceKey });
   resultNode.className = `access-result ${result.authorized ? "success" : "warning"}`;
-  resultNode.textContent = result.authorized ? `识别通过 · ${result.person.name} · ${(result.confidence * 100).toFixed(0)}%` : "识别拒绝 · 未授权人员";
+  resultNode.textContent = result.authorized ? `识别通过 · ${result.person.name} · ${(result.confidence * 100).toFixed(0)}%` : "识别拒绝 · 未授权人员 · 已自动关门";
+  if (!result.authorized) {
+    await command({ device: "door", action: "close" });
+  }
   await refresh();
 }
 
 async function detect() {
-  const camera = $("#cameraView"); camera.classList.add("scanning");
-  const result = await post("/api/vision/detect", { source: imageData ? "browser-upload" : "demo-camera", image_data: imageData });
-  setTimeout(() => { camera.classList.remove("scanning"); camera.classList.add("active"); camera.querySelector("p").textContent = `可信度 ${(result.confidence * 100).toFixed(0)}%`; }, 700);
-  $("#detectionLabels").innerHTML = result.labels.map(label => `<span>${label}</span>`).join("");
-  await refresh();
+  try {
+    const camera = $("#cameraView"); camera.classList.add("scanning");
+    const result = await post("/api/vision/detect", { source: imageData ? "browser-upload" : "demo-camera", image_data: imageData });
+    setTimeout(() => { camera.classList.remove("scanning"); camera.classList.add("active"); camera.querySelector("p").textContent = `可信度 ${(result.confidence * 100).toFixed(0)}%`; }, 700);
+    $("#detectionLabels").innerHTML = result.labels.map(label => `<span>${label}</span>`).join("");
+    await refresh();
+  } catch (error) {
+    toast("检测失败: " + error.message);
+  }
 }
 
+// ── Detection alert signals ──
+async function fetchAlerts() {
+  try {
+    const alerts = await api("/api/alerts");
+    renderAlerts(alerts);
+  } catch (_) { /* alerts unavailable (demo mode or server not ready) */ }
+}
+
+function renderAlerts(alerts) {
+  const droneAlert = alerts["detection:drone"];
+  const extinguisherAlert = alerts["detection:fire_extinguisher"];
+  const hasAny = droneAlert || extinguisherAlert;
+  $("#alertRow").classList.toggle("hidden", !hasAny);
+  updateAlertButton($("#alertDrone"), $("#droneBadge"), droneAlert, "fired-drone");
+  updateAlertButton($("#alertExtinguisher"), $("#extinguisherBadge"), extinguisherAlert, "fired");
+}
+
+function updateAlertButton(button, badge, alert, cssClass) {
+  if (alert) {
+    button.classList.add(cssClass);
+    badge.textContent = `${(alert.confidence * 100).toFixed(0)}%`;
+    button.title = `${alert.display_name} 已识别 · 可信度 ${(alert.confidence * 100).toFixed(0)}% · ${alert.fired_at}`;
+  } else {
+    button.classList.remove("fired", "fired-drone");
+    badge.textContent = "—";
+    button.title = button.dataset.alert === "detection:drone" ? "无人机检测信号" : "灭火器检测信号";
+  }
+}
+
+async function acknowledgeAlert(eventType) {
+  try {
+    await post("/api/alerts/ack", { event_type: eventType });
+    await fetchAlerts();
+  } catch (_) { /* ignore */ }
+}
+
+$("#alertDrone").addEventListener("click", () => acknowledgeAlert("detection:drone"));
+$("#alertExtinguisher").addEventListener("click", () => acknowledgeAlert("detection:fire_extinguisher"));
+
 $("#refreshButton").addEventListener("click", refresh);
-$("[data-device='door']").addEventListener("click", () => command({ device: "door", action: "open" }));
+$("[data-device='door']").addEventListener("click", () => {
+  const isOpen = $('#doorState').textContent === '已打开';
+  command({ device: "door", action: isOpen ? "close" : "open" });
+});
 $("#fanToggle").addEventListener("change", event => command({ device: "fan", action: event.target.checked ? "on" : "off" }));
 $("#lightSlider").addEventListener("input", event => $("#lightOutput").textContent = `${event.target.value}%`);
 $("#lightSlider").addEventListener("change", event => command({ device: "light", value: Number(event.target.value) }));
@@ -162,7 +213,9 @@ $("#imageInput").addEventListener("change", event => {
   reader.readAsDataURL(file);
 });
 refresh();
+fetchAlerts();
 setInterval(refresh, 15000);
+setInterval(fetchAlerts, 5000);  // poll alerts more frequently for near-real-time signals
 
 // ═══════════════════════════════════════════
 // 3D 视图集成

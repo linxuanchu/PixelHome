@@ -78,6 +78,14 @@
         <div class="camera-view" id="cameraView"><div class="scan-line"></div><div class="target-box"><span>CAM-01</span></div><p>等待摄像头画面</p></div>
         <label class="upload-button">选择检测图片<input id="imageInput" type="file" accept="image/*"></label>
         <div id="detectionLabels" class="label-row"><span>暂无识别结果</span></div>
+        <div class="alert-row hidden" id="alertRow">
+          <button class="alert-indicator" id="alertDrone" data-alert="detection:drone" title="无人机检测信号 · 点击确认消除">
+            <span class="alert-icon">🚁</span><span class="alert-label">无人机</span><span class="alert-badge" id="droneBadge">—</span>
+          </button>
+          <button class="alert-indicator" id="alertExtinguisher" data-alert="detection:fire_extinguisher" title="灭火器检测信号 · 点击确认消除">
+            <span class="alert-icon">🧯</span><span class="alert-label">灭火器</span><span class="alert-badge" id="extinguisherBadge">—</span>
+          </button>
+        </div>
       </article>
 
       <article class="history-panel panel">
