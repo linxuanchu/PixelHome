@@ -6,6 +6,8 @@
 
 ## 当前最高优先级：无人机与灭火器识别
 
+--建议尝试直接抛弃specialize模式，把models两个模型导入进yolo模式试试
+
 老师指定的基础识别类别为：
 
 - `drone`：无人机
@@ -24,7 +26,11 @@ python run.py --vision specialized
 
 若权重损坏或被误删，可运行 `python download_specialized_models.py` 恢复。服务输出统一类别名 `drone` 和 `fire_extinguisher`。
 
+目前这两个模型能正确识别灭火器和无人机，但是大概率会将其他物品意外识别成灭火器和无人机
+
 当前发布权重固定存放在 `models/baseline/`。后续自己的训练图片、标签和训练缓存不直接提交Git；数据集规则见 [datasets/README.md](datasets/README.md)，模型发布规则见 [models/README.md](models/README.md)。只有完成独立测试、记录来源和版本的候选权重才进入共享仓库。
+
+## 验收必须通过功能：支持从摄像机识别图片，目前只有接口还未接入摄像机
 
 ## Windows桌面程序
 
