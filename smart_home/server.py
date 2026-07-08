@@ -45,7 +45,7 @@ class Handler(BaseHTTPRequestHandler):
         print(f"[PixelHome] {fmt % args}")
 
     def json_response(self, payload, status=200):
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        body = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -96,6 +96,8 @@ class Handler(BaseHTTPRequestHandler):
             self.json_response(result)
         except (KeyError, ValueError, json.JSONDecodeError) as error:
             self.json_response({"error": str(error)}, 400)
+        except Exception as error:
+            self.json_response({"error": f"服务器内部错误: {error}"}, 500)
 
     def do_PATCH(self):
         try:
@@ -111,6 +113,8 @@ class Handler(BaseHTTPRequestHandler):
             self.json_response(result)
         except (KeyError, ValueError, json.JSONDecodeError) as error:
             self.json_response({"error": str(error)}, 400)
+        except Exception as error:
+            self.json_response({"error": f"服务器内部错误: {error}"}, 500)
 
     def do_DELETE(self):
         try:
@@ -119,6 +123,8 @@ class Handler(BaseHTTPRequestHandler):
             self.json_response({"error": "Not found"}, 404)
         except ValueError as error:
             self.json_response({"error": str(error)}, 400)
+        except Exception as error:
+            self.json_response({"error": f"服务器内部错误: {error}"}, 500)
 
     def serve_static(self, request_path):
         relative = "index.html" if request_path == "/" else request_path.lstrip("/")

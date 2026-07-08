@@ -46,7 +46,13 @@ class DemoVisionAdapter:
 
     def detect(self, source="demo-camera", image_data=None):
         display_source = "uploaded-image" if image_data else source
-        return {"source": display_source, "labels": ["person", "potted plant"], "confidence": 0.91, "mode": self.mode}
+        return {
+            "source": display_source,
+            "labels": ["person", "potted plant"],
+            "label_confidences": {"person": 0.91, "potted plant": 0.91},
+            "confidence": 0.91,
+            "mode": self.mode,
+        }
 
     def recognize_face(self, face_key, people):
         person = next((item for item in people if item["face_key"] == face_key), None)
@@ -71,7 +77,7 @@ class UltralyticsVisionAdapter(DemoVisionAdapter):
                 raise RuntimeError("YOLO mode requires: pip install -r requirements-ai.txt") from error
             model = YOLO(model_path)
         self.model = model
-        self.model_path = model_path
+        self.model_path = str(model_path)
 
     @staticmethod
     def decode_image(image_data):
@@ -92,9 +98,14 @@ class UltralyticsVisionAdapter(DemoVisionAdapter):
                 labels.append(str(names[int(class_id)]))
                 confidences.append(float(confidence))
         unique_labels = list(dict.fromkeys(labels))
+        label_confs = {}
+        for label, conf in zip(labels, confidences):
+            label_confs[label] = max(label_confs.get(label, 0), conf)
+        label_confs = {k: round(v, 4) for k, v in label_confs.items()}
         return {
             "source": source,
             "labels": unique_labels,
+            "label_confidences": label_confs,
             "confidence": round(max(confidences, default=0.0), 4),
             "count": len(labels),
             "mode": self.mode,
@@ -113,7 +124,7 @@ class SpecializedVisionAdapter(DemoVisionAdapter):
         extinguisher_model_path="fire_extinguisher_yolov8.pt",
         drone_model=None,
         extinguisher_model=None,
-        confidence=0.25,
+        confidence=0.5,
     ):
         if drone_model is None or extinguisher_model is None:
             try:
@@ -143,15 +154,31 @@ class SpecializedVisionAdapter(DemoVisionAdapter):
             for result in results:
                 for class_id, confidence in zip(result.boxes.cls.tolist(), result.boxes.conf.tolist()):
                     detected_name = str(result.names[int(class_id)]).strip().lower()
-                    if detected_name in accepted_names:
+                    passed = detected_name in accepted_names
+                    print(
+                        f"[specialized] {canonical_label:>18s} model "
+                        f"detected class={int(class_id):>2d} "
+                        f"name=\"{result.names[int(class_id)]}\" "
+                        f"conf={confidence:.4f} "
+                        f"-> {'ACCEPT' if passed else 'REJECT'}"
+                    )
+                    if passed:
                         labels.append(canonical_label)
                         confidences.append(float(confidence))
-        return {
+        unique_labels = list(dict.fromkeys(labels))
+        label_confs = {}
+        for label, conf in zip(labels, confidences):
+            label_confs[label] = max(label_confs.get(label, 0), conf)
+        label_confs = {k: round(v, 4) for k, v in label_confs.items()}
+        result = {
             "source": source,
-            "labels": list(dict.fromkeys(labels)),
+            "labels": unique_labels,
+            "label_confidences": label_confs,
             "confidence": round(max(confidences, default=0.0), 4),
             "count": len(labels),
             "mode": self.mode,
             "model": "specialized-ensemble",
             "models": self.model_paths,
         }
+        print(f"[specialized] final result: labels={unique_labels} confidences={label_confs}")
+        return result
