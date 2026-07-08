@@ -27,6 +27,16 @@
 - 运行方式：python run.py打开本地服务器
 - 测试结果：3d模型预览功能正常，可能与部分浏览器有按键冲突，建议在ide内打开
 - 注意事项：web前端GUI目前已完成3d预览，后续完善开门开灯动画相关功能
+
+
+### 姚宇鹏
+
+- 修改内容：新增无人机与灭火器检测告警信号系统、前端3d预览优化模型动画
+- 涉及文件： `smart_home/signals.py`、`smart_home/service.py`、`smart_home/server.py`、`web/index.html`、`web/app.js `、`web/styles.css `
+- 运行方式：先安装AI依赖 `python -m pip install -r requirements-ai.txt`，再运行 `python run.py --vision specialized`。Demo 模式不受任何影响
+- 测试结果： SignalBus emit/subscribe/acknowledge 单元验证通过。
+- 注意事项：告警信号目前存在内存中（SignalBus 单例），服务重启后丢失。阶段 2 如需持久化可接入数据库或 MQTT。两条通路都已就位，后续接硬件不需要改 detect() 业务逻辑。demo
+
 ```
 
 
