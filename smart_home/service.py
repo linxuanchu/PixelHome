@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from .climate import ClimatePolicy, FanClimateAdapter
 from .integrations import DisabledLLMProvider, EnergyPolicy, NetworkCapability
+from .signals import signal_bus
 
 
 class SmartHomeService:
@@ -83,6 +84,7 @@ class SmartHomeService:
             "climate": self.climate_status(state),
             "suspicious_count": self.db.scalar("SELECT COUNT(*) FROM suspicious_people WHERE status='open'", default=0),
             "mode": "simulation",
+            "alerts": self.get_alerts(),
         }
 
     @staticmethod
@@ -118,7 +120,8 @@ class SmartHomeService:
             self.home.command("door", "open")
             message, level = f"门禁通过：{result['person']['name']}", "success"
         else:
-            message, level = "门禁拒绝：未授权人员", "warning"
+            self.home.command("door", "close")  # 陌生访客识别 → 自动关门
+            message, level = "门禁拒绝：未授权人员 · 已自动关门", "warning"
         result["suspicious"] = self.record_access_attempt(face_key or "unknown", result)
         self.log("access", message, level, result)
         return result
@@ -157,7 +160,33 @@ class SmartHomeService:
             (result["source"], json.dumps(result["labels"], ensure_ascii=False), result["confidence"]),
         )
         self.log("vision", f"识别到：{'、'.join(result['labels'])}", details=result)
+
+        # Emit detection signals for high-priority classes so external
+        # adapters (MQTT / serial / GPIO – stage 2) and the web UI can react.
+        alert_classes = {"drone": "🚁 无人机", "fire_extinguisher": "🧯 灭火器"}
+        for label in result.get("labels", []):
+            if label in alert_classes:
+                signal_bus.emit(
+                    f"detection:{label}",
+                    {
+                        "label": label,
+                        "display_name": alert_classes[label],
+                        "confidence": result.get("confidence", 0),
+                        "source": result.get("source", source),
+                        "mode": result.get("mode", "unknown"),
+                    },
+                )
+
         return result
+
+    def get_alerts(self):
+        """Return current detection alerts (drone / fire_extinguisher)."""
+        return signal_bus.get_alerts()
+
+    def acknowledge_alert(self, event_type):
+        """Dismiss a detection alert."""
+        signal_bus.acknowledge(event_type)
+        self.log("vision", f"告警已确认：{event_type}", "info")
 
     def history(self, limit=30):
         rows = self.db.rows(

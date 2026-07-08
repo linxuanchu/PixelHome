@@ -70,6 +70,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/capabilities": lambda: self.service.capabilities(),
             "/api/history": lambda: self.service.history(int(parse_qs(parsed.query).get("limit", [30])[0])),
             "/api/health": lambda: {"status": "ok", "stage": 1, "mode": self.runtime_mode},
+            "/api/alerts": lambda: self.service.get_alerts(),
         }
         if parsed.path in routes:
             return self.json_response(routes[parsed.path]())
@@ -88,6 +89,8 @@ class Handler(BaseHTTPRequestHandler):
                 result = self.service.recognize(data.get("face_key", ""))
             elif self.path == "/api/admin/storage/cleanup":
                 result = self.service.cleanup_storage()
+            elif self.path == "/api/alerts/ack":
+                result = self.service.acknowledge_alert(data.get("event_type", ""))
             else:
                 return self.json_response({"error": "Not found"}, 404)
             self.json_response(result)
