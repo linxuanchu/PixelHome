@@ -209,7 +209,7 @@ $("#cleanupButton").addEventListener("click", async () => {
 $("#imageInput").addEventListener("change", event => {
   const file = event.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => { imageData = reader.result; $("#cameraView").style.backgroundImage = `url(${imageData})`; $("#cameraView").style.backgroundSize = "cover"; $("#cameraView p").textContent = file.name; toast("图片已载入，可运行目标识别"); };
+  reader.onload = () => { imageData = reader.result; const view = $("#cameraView"); view.style.backgroundImage = `url(${imageData})`; view.style.backgroundSize = "contain"; view.style.backgroundPosition = "center"; view.style.backgroundRepeat = "no-repeat"; view.querySelector("p").textContent = file.name; toast("图片已载入，可运行目标识别"); };
   reader.readAsDataURL(file);
 });
 refresh();
