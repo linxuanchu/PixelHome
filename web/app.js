@@ -11,10 +11,31 @@ const stateText = (value) => ({ open: "已打开", closed: "已关闭" }[value] 
 const esc = (value) => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
 let toastTimer;
 let imageData = null;
+let runtimeMode = 'demo';  // 从 /api/health 获取，未获取到时默认 demo
 
 function toast(message) {
   const node = $("#toast"); node.textContent = message; node.classList.add("show");
   clearTimeout(toastTimer); toastTimer = setTimeout(() => node.classList.remove("show"), 2400);
+}
+
+async function fetchMode() {
+  try {
+    const health = await api("/api/health");
+    runtimeMode = health.mode || 'demo';
+    updateDetectButtonState();
+  } catch (_) { /* 保持默认 demo 模式 */ }
+}
+
+function updateDetectButtonState() {
+  const btn = $("#detectButton");
+  const needsImage = runtimeMode === 'yolo' || runtimeMode === 'specialized';
+  if (needsImage && !imageData) {
+    btn.disabled = true;
+    btn.title = "请先选择检测图片";
+  } else {
+    btn.disabled = false;
+    btn.title = "运行识别";
+  }
 }
 
 function renderHome(home) {
@@ -76,9 +97,24 @@ function renderEvents(events) {
 
 function renderChart(history) {
   const temperatures = history.filter(item => item.metric === "temperature").slice(-18);
+  if (!temperatures.length) return;
+
+  const values = temperatures.map(item => Number(item.value));
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+
+  // 动态范围：数据跨度小于 2°C 时自动扩展，确保柱子有视觉差异
+  const range = Math.max(dataMax - dataMin, 2.0);
+  const pad = range * 0.25;                     // 上下各留 25% 余量
+  const floor = dataMin - pad;
+  const scale = 100 / (range + pad * 2);         // 总高度 100%
+
   $("#temperatureChart").innerHTML = temperatures.map(item => {
-    const value = Number(item.value); const height = Math.max(12, Math.min(100, (value - 15) * 6));
-    return `<i class="chart-bar" style="height:${height}%" data-value="${value}°C"></i>`;
+    const value = Number(item.value);
+    const height = Math.max(8, Math.min(100, (value - floor) * scale));
+    // 当前值高亮标记
+    const isLatest = item === temperatures[temperatures.length - 1];
+    return `<i class="chart-bar${isLatest ? ' chart-bar-latest' : ''}" style="height:${height.toFixed(1)}%" data-value="${value}°C"></i>`;
   }).join("");
 }
 
@@ -133,11 +169,24 @@ async function recognize(faceKey) {
 }
 
 async function detect() {
+  // 非 demo 模式下需要先选择图片
+  if ((runtimeMode === 'yolo' || runtimeMode === 'specialized') && !imageData) {
+    toast("请先选择一张检测图片");
+    return;
+  }
   try {
     const camera = $("#cameraView"); camera.classList.add("scanning");
     const result = await post("/api/vision/detect", { source: imageData ? "browser-upload" : "demo-camera", image_data: imageData });
     setTimeout(() => { camera.classList.remove("scanning"); camera.classList.add("active"); camera.querySelector("p").textContent = `可信度 ${(result.confidence * 100).toFixed(0)}%`; }, 700);
-    $("#detectionLabels").innerHTML = result.labels.map(label => `<span>${label}</span>`).join("");
+    if (result.labels.length === 0) {
+      $("#detectionLabels").innerHTML = '<span class="no-detection">未检测到目标</span>';
+    } else {
+      $("#detectionLabels").innerHTML = result.labels.map(label => {
+        const conf = result.label_confidences?.[label];
+        const confText = conf != null ? ` ${(conf * 100).toFixed(0)}%` : '';
+        return `<span>${label}<small>${confText}</small></span>`;
+      }).join("");
+    }
     await refresh();
   } catch (error) {
     toast("检测失败: " + error.message);
@@ -209,13 +258,16 @@ $("#cleanupButton").addEventListener("click", async () => {
 $("#imageInput").addEventListener("change", event => {
   const file = event.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => { imageData = reader.result; const view = $("#cameraView"); view.style.backgroundImage = `url(${imageData})`; view.style.backgroundSize = "contain"; view.style.backgroundPosition = "center"; view.style.backgroundRepeat = "no-repeat"; view.querySelector("p").textContent = file.name; toast("图片已载入，可运行目标识别"); };
+  reader.onload = () => { imageData = reader.result; const view = $("#cameraView"); view.style.backgroundImage = `url("${imageData}")`; view.style.backgroundSize = "contain"; view.style.backgroundPosition = "center"; view.style.backgroundRepeat = "no-repeat"; view.querySelector("p").textContent = file.name; updateDetectButtonState(); toast("图片已载入，可运行目标识别"); };
   reader.readAsDataURL(file);
 });
-refresh();
-fetchAlerts();
-setInterval(refresh, 15000);
-setInterval(fetchAlerts, 5000);  // poll alerts more frequently for near-real-time signals
+(async function init() {
+  await fetchMode();
+  refresh();
+  fetchAlerts();
+  setInterval(refresh, 15000);
+  setInterval(fetchAlerts, 5000);  // poll alerts more frequently for near-real-time signals
+})();
 
 // ═══════════════════════════════════════════
 // 3D 视图集成
@@ -226,7 +278,7 @@ let room3dReady = false;
 // 显示加载状态
 function show3dLoading(msg) {
   const layer = $('#room3dLayer');
-  if (layer) layer.innerHTML = `<div style="display:grid;place-items:center;height:100%;color:#677087;font:13px Consolas,monospace">${msg}</div>`;
+  if (layer) layer.innerHTML = `<div style="display:grid;place-items:center;height:100%;color:#8899b4;font:13px 'SF Mono',Consolas,monospace">${msg}</div>`;
 }
 
 // 等待 room3d 模块就绪后初始化

@@ -32,26 +32,26 @@
     'void main(){' +
     // pixelate UVs — this is the whole pixel-art trick
     '  vec2 uv=floor(v_uv*u_res)/u_res;' +
-    // sky gradient
-    '  vec3 top=vec3(.31,.65,.82);' +
-    '  vec3 bot=vec3(.56,.83,.91);' +
+    // sky gradient — 黑蓝暗夜
+    '  vec3 top=vec3(.01,.03,.08);' +
+    '  vec3 bot=vec3(.02,.06,.14);' +
     '  vec3 sky=mix(top,bot,uv.y);' +
-    // sun
+    // moon — 金色月亮
     '  vec2 sp=vec2(.78,.20);' +
     '  float d=length(uv-sp);' +
     '  float core=1.-smoothstep(0.,.07,d);' +
     '  float glow=exp(-d*6.)*.6;' +
-    '  vec3 sun=vec3(1.,.88,.25);' +
-    '  sky=mix(sky,sun*1.2,core);' +
-    '  sky+=sun*glow*.25;' +
-    // pixel clouds — two layers of quantised sine waves
+    '  vec3 moon=vec3(.96,.87,.59);' +
+    '  sky=mix(sky,moon*1.2,core);' +
+    '  sky+=moon*glow*.25;' +
+    // pixel clouds — 暗色薄云
     '  float t=u_time*.12;' +
     '  float n1=sin((uv.x+t*.6)*7.3)*sin(uv.y*4.1+1.3)*.5+.5;' +
     '  float n2=sin((uv.x-t*.9+.4)*9.5)*sin((uv.y-.08)*3.3+2.1)*.5+.5;' +
     '  n1=floor(n1*3.)/3.;' +
     '  n2=floor(n2*3.)/3.;' +
-    '  float cld=min(1.,step(.65,n1)*.85+step(.65,n2)*.6);' +
-    '  sky=mix(sky,vec3(.95,.95,.92),cld);' +
+    '  float cld=min(1.,step(.65,n1)*.55+step(.65,n2)*.35);' +
+    '  sky=mix(sky,vec3(.18,.22,.32),cld);' +
     '  gl_FragColor=vec4(sky,1.);' +
     '}'
 

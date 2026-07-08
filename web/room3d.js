@@ -10,25 +10,32 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // 材质工厂
 // ═══════════════════════════════════════════════════
 const Mat = {
-  wall:      () => new THREE.MeshStandardMaterial({ color: 0xfff5e0, roughness: 0.92, name: 'mat_wall' }),
-  floor:     () => new THREE.MeshStandardMaterial({ color: 0xc4a47a, roughness: 0.72, name: 'mat_floor' }),
-  ceiling:   () => new THREE.MeshStandardMaterial({ color: 0xf7f7f7, roughness: 0.95, name: 'mat_ceiling' }),
-  door:      () => new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.55, name: 'mat_door' }),
-  frame:     () => new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.5, name: 'mat_frame' }),
-  glass:     () => new THREE.MeshStandardMaterial({ color: 0xb8dff0, roughness: 0.08, metalness: 0.05, transparent: true, opacity: 0.38, name: 'mat_glass' }),
-  lampBody:  () => new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.25, metalness: 0.7, name: 'mat_lamp_body' }),
-  lampBulb:  () => new THREE.MeshStandardMaterial({ color: 0xfffbe6, roughness: 0.1, emissive: 0x000000, emissiveIntensity: 0, name: 'mat_lamp_bulb' }),
-  fanBlade:  () => new THREE.MeshStandardMaterial({ color: 0x2c5282, roughness: 0.35, metalness: 0.25, name: 'mat_fan_blade' }),
-  fanHub:    () => new THREE.MeshStandardMaterial({ color: 0xd4d4d4, roughness: 0.3, metalness: 0.6, name: 'mat_fan_hub' }),
-  table:     () => new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.55, name: 'mat_table' }),
-  chairWood: () => new THREE.MeshStandardMaterial({ color: 0x5c4a3a, roughness: 0.5, name: 'mat_chair_wood' }),
-  baseboard: () => new THREE.MeshStandardMaterial({ color: 0xe8ddcc, roughness: 0.85, name: 'mat_baseboard' }),
-  rug:       () => new THREE.MeshStandardMaterial({ color: 0xd4c5a9, roughness: 0.9, name: 'mat_rug' }),
-  bedFrame:  () => new THREE.MeshStandardMaterial({ color: 0x7a6552, roughness: 0.5, name: 'mat_bed_frame' }),
-  mattress:  () => new THREE.MeshStandardMaterial({ color: 0xf5f1ea, roughness: 0.85, name: 'mat_mattress' }),
-  pillow:    () => new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.9, name: 'mat_pillow' }),
-  blanket:   () => new THREE.MeshStandardMaterial({ color: 0x5b8c7a, roughness: 0.8, name: 'mat_blanket' }),
-  nightstand:()=> new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.55, name: 'mat_nightstand' }),
+  // 暗夜主题 — 材质配色（灵感: feibi 蓝紫金）
+  wall:      () => new THREE.MeshStandardMaterial({ color: 0x1a2035, roughness: 0.92, name: 'mat_wall' }),
+  floor:     () => new THREE.MeshStandardMaterial({ color: 0x3d3028, roughness: 0.70, name: 'mat_floor' }),
+  ceiling:   () => new THREE.MeshStandardMaterial({ color: 0x222840, roughness: 0.95, name: 'mat_ceiling' }),
+  door:      () => new THREE.MeshStandardMaterial({ color: 0x4a3828, roughness: 0.50, name: 'mat_door' }),
+  frame:     () => new THREE.MeshStandardMaterial({ color: 0x2a2a35, roughness: 0.45, name: 'mat_frame' }),
+  glass:     () => new THREE.MeshStandardMaterial({ color: 0x5a90b8, roughness: 0.06, metalness: 0.08, transparent: true, opacity: 0.28, name: 'mat_glass' }),
+  lampBody:  () => new THREE.MeshStandardMaterial({ color: 0x909098, roughness: 0.22, metalness: 0.75, name: 'mat_lamp_body' }),
+  lampBulb:  () => new THREE.MeshStandardMaterial({ color: 0xfff6d6, roughness: 0.08, emissive: 0x000000, emissiveIntensity: 0, name: 'mat_lamp_bulb' }),
+  fanBlade:  () => new THREE.MeshStandardMaterial({ color: 0x3b7be0, roughness: 0.30, metalness: 0.30, name: 'mat_fan_blade' }),
+  fanHub:    () => new THREE.MeshStandardMaterial({ color: 0x808088, roughness: 0.28, metalness: 0.65, name: 'mat_fan_hub' }),
+  table:     () => new THREE.MeshStandardMaterial({ color: 0x5c4a38, roughness: 0.50, name: 'mat_table' }),
+  chairWood: () => new THREE.MeshStandardMaterial({ color: 0x362820, roughness: 0.48, name: 'mat_chair_wood' }),
+  baseboard: () => new THREE.MeshStandardMaterial({ color: 0x222638, roughness: 0.82, name: 'mat_baseboard' }),
+  rug:       () => new THREE.MeshStandardMaterial({ color: 0x5c5070, roughness: 0.88, name: 'mat_rug' }),
+  bedFrame:  () => new THREE.MeshStandardMaterial({ color: 0x423028, roughness: 0.48, name: 'mat_bed_frame' }),
+  mattress:  () => new THREE.MeshStandardMaterial({ color: 0x2a2c3d, roughness: 0.84, name: 'mat_mattress' }),
+  pillow:    () => new THREE.MeshStandardMaterial({ color: 0x32354a, roughness: 0.88, name: 'mat_pillow' }),
+  blanket:   () => new THREE.MeshStandardMaterial({ color: 0xb97fe0, roughness: 0.78, name: 'mat_blanket' }),
+  nightstand:()=> new THREE.MeshStandardMaterial({ color: 0x5c4a38, roughness: 0.50, name: 'mat_nightstand' }),
+  sofaBody:   ()=> new THREE.MeshStandardMaterial({ color: 0x3d3560, roughness: 0.72, name: 'mat_sofa_body' }),
+  sofaSeat:   ()=> new THREE.MeshStandardMaterial({ color: 0x4e4478, roughness: 0.78, name: 'mat_sofa_seat' }),
+  artFrame:   ()=> new THREE.MeshStandardMaterial({ color: 0xcaa85c, roughness: 0.28, metalness: 0.82, name: 'mat_art_frame' }),
+  artCanvas:  ()=> new THREE.MeshStandardMaterial({ color: 0x202840, roughness: 0.92, name: 'mat_art_canvas' }),
+  cabinet:    ()=> new THREE.MeshStandardMaterial({ color: 0x4a3830, roughness: 0.42, name: 'mat_cabinet' }),
+  deskTop:    ()=> new THREE.MeshStandardMaterial({ color: 0x524030, roughness: 0.48, name: 'mat_desk' }),
 };
 
 // ═══════════════════════════════════════════════════
@@ -135,8 +142,8 @@ const Room3D = {
     if (!container) { console.error('[Room3D] 容器未找到:', containerSelector); return; }
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x8fd3e8);
-    this.scene.fog = new THREE.Fog(0x8fd3e8, 8, 25);
+    this.scene.background = new THREE.Color(0x020c1e);
+    this.scene.fog = new THREE.Fog(0x020c1e, 8, 25);
 
     const rect = container.getBoundingClientRect();
     const cw = rect.width || container.clientWidth || 640;
@@ -182,11 +189,11 @@ const Room3D = {
 
   // ═══════════════════════════════════════════════
   _setupLights() {
-    const ambient = new THREE.AmbientLight(0xfff5e8, 0.9);
+    const ambient = new THREE.AmbientLight(0x667799, 0.38);
     this.scene.add(ambient);
-    const hemi = new THREE.HemisphereLight(0x8fd3e8, 0x6b8c5c, 0.5);
+    const hemi = new THREE.HemisphereLight(0x2a4470, 0x1a2a1e, 0.25);
     this.scene.add(hemi);
-    this.sunLight = new THREE.DirectionalLight(0xfff8e7, 3.0);
+    this.sunLight = new THREE.DirectionalLight(0xaac8ee, 1.2);
     this.sunLight.position.set(8, 10, 2);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 1024;
@@ -215,7 +222,7 @@ const Room3D = {
     tex.colorSpace = THREE.SRGBColorSpace;
     const envMap = pmrem.fromEquirectangular(tex);
     this.scene.environment = envMap;
-    this.scene.background = new THREE.Color(0xdce8f0);
+    this.scene.background = new THREE.Color(0x0c1e3a);
     tex.dispose(); pmrem.dispose();
   },
 
@@ -473,6 +480,92 @@ const Room3D = {
       this.allMeshes.push(reg(ns, 'nightstand'));
     }
 
+    // ═══════════════════════════════════════════════════
+    // 卧室：衣柜（靠前墙）—— OBJ 启发
+    // ═══════════════════════════════════════════════════
+    {
+      const wg = new THREE.Group();
+      wg.name = 'wardrobe_group';
+      const ww = 1.05, wh = 2.2, wd = 0.38;
+      // 柜体
+      wg.add(box(ww, wh, wd, Mat.cabinet(), 'wardrobe_body'));
+      wg.children[0].position.y = wh / 2;
+      // 双开门装饰
+      for (let d = 0; d < 2; d++) {
+        const doorLine = box(0.015, wh - 0.08, wd - 0.04, Mat.frame(), 'wdoor_line');
+        doorLine.position.set((d - 0.5) * ww / 3, wh / 2, wd * 0.1);
+        doorLine.castShadow = false;
+        wg.add(doorLine);
+        // 门把手
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 4), Mat.lampBody());
+        knob.position.set((d - 0.5) * ww / 3 + (d === 0 ? 1 : -1) * 0.06, wh * 0.55, wd / 2 + 0.01);
+        knob.castShadow = false;
+        wg.add(knob);
+      }
+      // 底座
+      wg.add(box(ww + 0.04, 0.06, wd + 0.04, Mat.frame(), 'wardrobe_base'));
+      wg.children[wg.children.length - 1].position.y = 0.03;
+      wg.position.set(-1.0, 0.005, -1.48);
+      this.modelRoot.add(wg);
+      this.allMeshes.push(reg(wg, 'wardrobe'));
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 卧室：书桌 —— OBJ 启发
+    // ═══════════════════════════════════════════════════
+    {
+      const dg = new THREE.Group();
+      dg.name = 'desk_group';
+      const dw = 0.78, dd = 0.44;
+      // 桌面
+      dg.add(box(dw, 0.035, dd, Mat.deskTop(), 'desk_top'));
+      dg.children[0].position.y = 0.73;
+      // 桌腿 ×4
+      [[-dw/2+0.05,0.365,-dd/2+0.05],[dw/2-0.05,0.365,-dd/2+0.05],
+       [-dw/2+0.05,0.365,dd/2-0.05],[dw/2-0.05,0.365,dd/2-0.05]].forEach(([lx,ly,lz]) => {
+        dg.add(cyl(0.022, 0.022, 0.73, 8, Mat.chairWood(), 'desk_leg'));
+        dg.children[dg.children.length - 1].position.set(lx, ly, lz);
+      });
+      // 小抽屉
+      dg.add(box(dw - 0.22, 0.12, dd - 0.06, Mat.cabinet(), 'desk_drawer'));
+      dg.children[dg.children.length - 1].position.set(0.06, 0.67, 0);
+      // 抽屉把手
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 4), Mat.lampBody());
+      knob.position.set(0.06, 0.67, dd / 2 - 0.02);
+      knob.castShadow = false;
+      dg.add(knob);
+      dg.position.set(-0.5, 0.005, -1.05);
+      this.modelRoot.add(dg);
+      this.allMeshes.push(reg(dg, 'desk'));
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 卧室：落地灯 —— OBJ 启发
+    // ═══════════════════════════════════════════════════
+    {
+      const fl = new THREE.Group();
+      fl.name = 'floor_lamp_group';
+      // 底座
+      fl.add(cyl(0.12, 0.14, 0.04, 16, Mat.lampBody(), 'fl_base'));
+      fl.children[0].position.y = 0.02;
+      // 灯杆
+      fl.add(cyl(0.025, 0.025, 1.55, 8, Mat.lampBody(), 'fl_pole'));
+      fl.children[1].position.y = 0.8;
+      // 灯罩
+      const shade = cyl(0.2, 0.12, 0.28, 16, Mat.lampBulb(), 'fl_shade');
+      shade.position.y = 1.58;
+      shade.castShadow = false;
+      fl.add(shade);
+      // 灯泡
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 6), Mat.lampBulb());
+      bulb.position.y = 1.48;
+      bulb.castShadow = false;
+      fl.add(bulb);
+      fl.position.set(-1.3, 0.005, -1.2);
+      this.modelRoot.add(fl);
+      this.allMeshes.push(reg(fl, 'floor_lamp'));
+    }
+
     // ═══════════════════════════════════════════════
     // 卧室：风扇（天花板）
     // ═══════════════════════════════════════════════
@@ -505,46 +598,176 @@ const Room3D = {
     }
 
     // ═══════════════════════════════════════════════
-    // 客厅：餐桌 + 两把椅子
-    // ═══════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════
+    // 客厅：沙发（靠后墙，面朝室内）—— OBJ 启发
+    // ═══════════════════════════════════════════════════
+    {
+      const sg = new THREE.Group();
+      sg.name = 'sofa_group';
+      const sw = 1.75, sd = 0.64, sh = 0.22;
+      // 底座
+      sg.add(box(sw, sh, sd, Mat.sofaBody(), 'sofa_base'));
+      sg.children[sg.children.length - 1].position.y = sh / 2;
+      // 靠背
+      const back = box(sw, 0.48, 0.1, Mat.sofaBody(), 'sofa_back');
+      back.position.set(0, sh + 0.24, sd / 2 - 0.05);
+      sg.add(back);
+      // 两侧扶手
+      for (let s = -1; s <= 1; s += 2) {
+        const arm = box(0.1, 0.35, sd, Mat.sofaBody(), 'sofa_arm');
+        arm.position.set(s * (sw / 2 - 0.05), sh + 0.18, 0);
+        sg.add(arm);
+      }
+      // 双人座垫
+      for (let c = 0; c < 2; c++) {
+        const cushion = box(sw / 2 - 0.06, 0.08, sd - 0.06, Mat.sofaSeat(), 'sofa_cushion');
+        cushion.position.set((c - 0.5) * sw / 2, sh + 0.04, -0.01);
+        cushion.castShadow = false;
+        sg.add(cushion);
+      }
+      // 靠垫 ×2
+      for (let p = 0; p < 2; p++) {
+        const pillow = box(0.45, 0.26, 0.07, Mat.blanket(), 'sofa_pillow');
+        pillow.position.set((p - 0.5) * sw / 2, sh + 0.26, sd / 2 - 0.09);
+        pillow.castShadow = false;
+        sg.add(pillow);
+      }
+      // 短腿 ×4
+      [[-sw/2+0.08,0.06,-sd/2+0.06],[sw/2-0.08,0.06,-sd/2+0.06],
+       [-sw/2+0.08,0.06,sd/2-0.06],[sw/2-0.08,0.06,sd/2-0.06]].forEach(([lx,ly,lz]) => {
+        sg.add(cyl(0.03, 0.03, 0.1, 8, Mat.chairWood(), 'sofa_leg'));
+        sg.children[sg.children.length - 1].position.set(lx, ly, lz);
+      });
+      sg.position.set(1.05, 0.005, 1.33);
+      this.modelRoot.add(sg);
+      this.allMeshes.push(reg(sg, 'sofa'));
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 客厅：茶几 —— OBJ 启发
+    // ═══════════════════════════════════════════════════
     {
       const tg = new THREE.Group();
-      tg.name = 'table_group';
-      // 桌面
-      const top = box(1.0, 0.04, 0.65, Mat.table(), 'table_top');
-      top.position.y = 0.74;
+      tg.name = 'coffee_table_group';
+      const top = box(0.85, 0.035, 0.5, Mat.table(), 'ctable_top');
+      top.position.y = 0.34;
       tg.add(top);
-      this.allMeshes.push(reg(top, 'table_top'));
-      // 腿
-      [[-0.43, 0.37, -0.26], [0.43, 0.37, -0.26], [-0.43, 0.37, 0.26], [0.43, 0.37, 0.26]].forEach(([lx, ly, lz]) => {
-        tg.add(cyl(0.035, 0.035, 0.74, 8, Mat.chairWood(), 'table_leg'));
+      [[-0.38,0.17,-0.21],[0.38,0.17,-0.21],[-0.38,0.17,0.21],[0.38,0.17,0.21]].forEach(([lx,ly,lz]) => {
+        tg.add(cyl(0.025, 0.028, 0.34, 8, Mat.chairWood(), 'ctable_leg'));
         tg.children[tg.children.length - 1].position.set(lx, ly, lz);
       });
-      tg.position.set(1.05, 0, 0.85);
+      // 下层搁板
+      const shelf = box(0.6, 0.02, 0.35, Mat.table(), 'ctable_shelf');
+      shelf.position.y = 0.08;
+      shelf.castShadow = false;
+      tg.add(shelf);
+      tg.position.set(1.05, 0, 0.58);
       this.modelRoot.add(tg);
+      this.allMeshes.push(reg(tg, 'coffee_table'));
     }
 
-    // 客厅椅子 ×2
-    for (let ci = 0; ci < 2; ci++) {
-      const cg = new THREE.Group();
-      cg.name = 'chair_' + ci;
-      // 座面
-      cg.add(box(0.38, 0.03, 0.38, Mat.chairWood(), 'seat'));
-      cg.children[0].position.y = 0.44;
-      // 腿
-      [[-0.15, 0.22, -0.15], [0.15, 0.22, -0.15], [-0.15, 0.22, 0.15], [0.15, 0.22, 0.15]].forEach(([lx, ly, lz]) => {
-        cg.add(cyl(0.025, 0.025, 0.44, 8, Mat.chairWood(), 'leg'));
-        cg.children[cg.children.length - 1].position.set(lx, ly, lz);
+    // ═══════════════════════════════════════════════════
+    // 客厅：电视柜 / 媒体柜（靠右墙）—— OBJ 启发
+    // ═══════════════════════════════════════════════════
+    {
+      const mg = new THREE.Group();
+      mg.name = 'media_console_group';
+      const mw = 1.05, mh = 0.48, md = 0.34;
+      mg.add(box(mw, mh, md, Mat.cabinet(), 'media_body'));
+      mg.children[0].position.y = mh / 2 + 0.08;
+      // 柜门装饰线
+      for (let d = 0; d < 2; d++) {
+        const line = box(0.015, mh - 0.06, 0.005, Mat.frame(), 'media_line');
+        line.position.set((d - 0.5) * mw / 3, mh / 2 + 0.08, md / 2 + 0.003);
+        line.castShadow = false;
+        mg.add(line);
+      }
+      // 短腿
+      [[-mw/2+0.06,0.04,-md/2+0.04],[mw/2-0.06,0.04,-md/2+0.04],
+       [-mw/2+0.06,0.04,md/2-0.04],[mw/2-0.06,0.04,md/2-0.04]].forEach(([lx,ly,lz]) => {
+        mg.add(cyl(0.02, 0.02, 0.08, 6, Mat.frame(), 'media_leg'));
+        mg.children[mg.children.length - 1].position.set(lx, ly, lz);
       });
-      // 靠背
-      cg.add(box(0.35, 0.32, 0.03, Mat.chairWood(), 'back'));
-      cg.children[cg.children.length - 1].position.set(0, 0.62, -0.17);
-
-      const cz = 1.2;
-      cg.position.set(ci === 0 ? 0.55 : 1.55, 0, cz);
-      cg.rotation.y = (ci === 0) ? Math.PI - 0.4 : Math.PI + 0.4;
-      this.modelRoot.add(cg);
+      mg.position.set(1.8, 0, -0.5);
+      mg.rotation.y = -Math.PI / 2;
+      this.modelRoot.add(mg);
+      this.allMeshes.push(reg(mg, 'media_console'));
     }
+
+    // ═══════════════════════════════════════════════════
+    // 客厅：书架（靠右墙）—— OBJ 启发
+    // ═══════════════════════════════════════════════════
+    {
+      const bg = new THREE.Group();
+      bg.name = 'bookshelf_group';
+      const bw = 0.32, bh = 1.55, bd = 0.28, nShelves = 4;
+      for (let s = -1; s <= 1; s += 2) {
+        bg.add(box(0.02, bh, bd, Mat.cabinet(), 'bshelf_side'));
+        bg.children[bg.children.length - 1].position.set(s * (bw / 2 - 0.01), bh / 2, 0);
+      }
+      const gap = (bh - 0.1) / (nShelves - 1);
+      const bookColors = [0xb97fe0, 0x3b7be0, 0x5a90b8, 0xcaa85c, 0x4e4478, 0x8b6f5e, 0xd4836a];
+      for (let i = 0; i < nShelves; i++) {
+        const shelf = box(bw - 0.02, 0.02, bd, Mat.table(), 'bshelf_shelf');
+        shelf.position.y = 0.1 + i * gap;
+        bg.add(shelf);
+        // 书本装饰
+        if (i < nShelves - 1) {
+          const nBooks = 3 + i * 2;
+          for (let b = 0; b < nBooks; b++) {
+            const bw2 = 0.02 + Math.random() * 0.03;
+            const bh2 = 0.1 + Math.random() * gap * 0.55;
+            const bm = new THREE.MeshStandardMaterial({
+              color: bookColors[b % bookColors.length], roughness: 0.7, name: 'book_mat'
+            });
+            const book = box(bw2, bh2, bd - 0.03, bm, 'book');
+            book.position.set(-bw/2 + 0.05 + b * 0.04 + Math.random() * 0.02,
+              shelf.position.y + 0.01 + bh2 / 2, 0.01);
+            book.castShadow = false;
+            bg.add(book);
+          }
+        }
+      }
+      bg.position.set(1.87, 0.005, 0.4);
+      bg.rotation.y = -Math.PI / 2;
+      this.modelRoot.add(bg);
+      this.allMeshes.push(reg(bg, 'bookshelf'));
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 客厅：墙饰（后墙三幅 + 右墙一幅）—— OBJ 启发
+    // ═══════════════════════════════════════════════════
+    {
+      for (let a = 0; a < 3; a++) {
+        const fg = new THREE.Group();
+        const fw = 0.42, fh = 0.42;
+        fg.add(box(fw, fh, 0.025, Mat.artFrame(), 'frame_outer'));
+        fg.children[0].position.z = 0;
+        const canvas = box(fw - 0.06, fh - 0.06, 0.012, Mat.artCanvas(), 'canvas');
+        canvas.position.z = 0.007;
+        canvas.castShadow = false;
+        fg.add(canvas);
+        fg.position.set(-0.53 + a * 0.53, 1.85, HD - 0.03);
+        fg.name = 'wall_art_' + a;
+        this.modelRoot.add(fg);
+      }
+      // 右墙大幅画
+      {
+        const fg = new THREE.Group();
+        fg.add(box(0.85, 0.6, 0.025, Mat.artFrame(), 'frame_large'));
+        fg.children[0].position.z = 0;
+        const canvas = box(0.79, 0.54, 0.012, Mat.artCanvas(), 'canvas_large');
+        canvas.position.z = 0.007;
+        canvas.castShadow = false;
+        fg.add(canvas);
+        fg.position.set(HW - 0.03, 1.85, -0.5);
+        fg.rotation.y = -Math.PI / 2;
+        fg.name = 'wall_art_large';
+        this.modelRoot.add(fg);
+      }
+    }
+
 
     // ═══════════════════════════════════════════════
     // 客厅：天花板灯
@@ -729,13 +952,16 @@ const Room3D = {
 
   _printMeshGuide() {
     console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color:#ffd166');
-    console.log('%c[Room3D] 🏠 两室户型', 'color:#62c370');
+    console.log('%c[Room3D] 🏠 两室户型 · OBJ 灵感增强版', 'color:#62c370');
     console.log(`  入户门: ${this.doorTargets?.length ? this.doorTargets.map(d => `#${d.meshIndex} ${d.name}`).join(',') : '无'}`);
     console.log(`  窗户:   ${this.windowTargets?.length ? this.windowTargets.map(w => `#${w.meshIndex} ${w.name}`).join(',') : '无'}`);
     console.log(`  灯:     ${this.lampTargets?.length ? this.lampTargets.map(l => `#${l.meshIndex} ${l.name}`).join(',') : '无'}`);
     console.log(`  风扇:   ${this.fanTarget ? `#${this.fanTarget.meshIndex} ${this.fanTarget.name} (卧室)` : '无'}`);
     console.log(`  天花板: ${this.ceilingTarget ? `#${this.ceilingTarget.meshIndex} ${this.ceilingTarget.name}` : '无'}`);
     console.log(`  墙面:   ${this._wallMeshes?.length || 0} 块`);
+    const newItems = this.allMeshes.filter(m =>
+      ['sofa','coffee_table','media_console','bookshelf','wardrobe','desk','floor_lamp'].includes(m.name));
+    if (newItems.length) console.log(`%c  🆕 OBJ灵感: ${newItems.map(m => m.name).join(', ')}`, 'color:#ffd166');
     console.log('%c  G切换墙壁 · X X光 · R重置 · WASD移动', 'color:#888');
     console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color:#ffd166');
   },
