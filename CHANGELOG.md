@@ -9,8 +9,9 @@
 - 修改内容：在组员当前 Hybrid 三模型版本基础上，增强 Windows 启动器，双击 `dist\PixelHome\PixelHome.exe` 后默认自动启动 `python run.py --vision hybrid --port 8000` 并打开管理界面；同时将灭火器基线权重替换为测试表现更好的 Javay `best3.pt`，兼容模型输出标签 `extinguisher`。
 - 涉及文件：`launcher.py`、`smart_home/adapters.py`、`download_specialized_models.py`、`models/baseline/fire_extinguisher_yolov8.pt`、`models/README.md`、`MODEL_EVALUATION.md`、`README.md`、`tests/test_service.py`、`CHANGELOG.md`。
 - 运行方式：双击 `dist\PixelHome\PixelHome.exe`，或源码运行 `python run.py --vision hybrid`。
-- 测试结果：新增 Javay `extinguisher` 标签兼容测试；灭火器新权重在50轮专项链路测试中正样本 `50/50`、干扰项误报 `1/50`。
-- 注意事项：`dist/` 不进入Git，拉取GitHub源码后需要重新运行 `build_windows.ps1` 才能更新本地打包程序。
+- 测试结果：已运行 `python -m unittest discover -s tests -v`，14个测试全部通过；已验证 `ultralytics 8.4.87`、`cv2 5.0.0`、`torch 2.12.1+cpu` 可导入；demo 服务、hybrid 服务烟测均通过，hybrid 返回 `{"status":"ok","stage":1,"mode":"hybrid"}`；灭火器新权重 SHA256 为 `9f03f76db1b14a974d5b7f5db36a6a20f5ab77536ea90e5f3eb3927aef6fe50f`；灭火器新权重在50轮专项链路测试中正样本 `50/50`、干扰项误报 `1/50`。
+- 上传状态：已提交并推送到 GitHub `main`，提交号 `402c026 Improve hybrid launcher and extinguisher model`。
+- 注意事项：`dist/` 不进入Git，拉取GitHub源码后需要重新运行 `build_windows.ps1` 才能更新本地打包程序；本地 `model_lab/` 仅用于模型测试，不作为正式更新内容上传。
 
 ## 2026-07-07
 
