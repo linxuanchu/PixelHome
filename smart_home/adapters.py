@@ -117,6 +117,10 @@ class SpecializedVisionAdapter(DemoVisionAdapter):
     """Two-model detector for the required drone and fire-extinguisher classes."""
 
     mode = "specialized"
+    DEFAULT_THRESHOLDS = {
+        "drone": 0.7,
+        "fire_extinguisher": 0.3749,
+    }
 
     def __init__(
         self,
@@ -125,6 +129,7 @@ class SpecializedVisionAdapter(DemoVisionAdapter):
         drone_model=None,
         extinguisher_model=None,
         confidence=0.5,
+        class_thresholds=None,
     ):
         if drone_model is None or extinguisher_model is None:
             try:
@@ -133,9 +138,17 @@ class SpecializedVisionAdapter(DemoVisionAdapter):
                 raise RuntimeError("Specialized vision requires: pip install -r requirements-ai.txt") from error
             drone_model = drone_model or YOLO(drone_model_path)
             extinguisher_model = extinguisher_model or YOLO(extinguisher_model_path)
+        self.class_thresholds = dict(self.DEFAULT_THRESHOLDS)
+        self.class_thresholds["drone"] = max(float(confidence), self.class_thresholds["drone"])
+        if class_thresholds:
+            self.class_thresholds.update(class_thresholds)
         self.models = (
             ("drone", drone_model, {"drone"}),
-            ("fire_extinguisher", extinguisher_model, {"fire extinguisher", "fire_extinguisher"}),
+            (
+                "fire_extinguisher",
+                extinguisher_model,
+                {"fire extinguisher", "fire_extinguisher", "fireextinguisher", "extinguisher"},
+            ),
         )
         self.model_paths = {
             "drone": str(drone_model_path),
@@ -150,16 +163,18 @@ class SpecializedVisionAdapter(DemoVisionAdapter):
         labels = []
         confidences = []
         for canonical_label, model, accepted_names in self.models:
-            results = model.predict(image, verbose=False, conf=self.confidence)
+            min_confidence = float(self.class_thresholds.get(canonical_label, self.confidence))
+            results = model.predict(image, verbose=False, conf=min_confidence)
             for result in results:
                 for class_id, confidence in zip(result.boxes.cls.tolist(), result.boxes.conf.tolist()):
                     detected_name = str(result.names[int(class_id)]).strip().lower()
-                    passed = detected_name in accepted_names
+                    passed = detected_name in accepted_names and float(confidence) >= min_confidence
                     print(
                         f"[specialized] {canonical_label:>18s} model "
                         f"detected class={int(class_id):>2d} "
                         f"name=\"{result.names[int(class_id)]}\" "
                         f"conf={confidence:.4f} "
+                        f"min_conf={min_confidence:.2f} "
                         f"-> {'ACCEPT' if passed else 'REJECT'}"
                     )
                     if passed:
@@ -231,7 +246,7 @@ class HybridVisionAdapter(DemoVisionAdapter):
             (
                 self.extinguisher_model,
                 "fire_extinguisher",
-                {"fire extinguisher", "fire_extinguisher"},
+                {"fire extinguisher", "fire_extinguisher", "fireextinguisher", "extinguisher"},
             ),
         )
 

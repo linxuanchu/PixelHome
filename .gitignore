@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 data/*.db-journal
 data/*.db
+data/*.log
 .venv/
 runs/
 *.pt

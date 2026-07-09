@@ -2,6 +2,16 @@
 
 本文件用于记录项目每次重要修改。每位组员修改功能、接口、模型、数据集、3D预览或硬件适配后，都需要同步追加更新记录，方便其他人拉取代码后快速了解变化。
 
+## 2026-07-09
+
+### 林玄楚 / Codex
+
+- 修改内容：在组员当前 Hybrid 三模型版本基础上，增强 Windows 启动器，双击 `dist\PixelHome\PixelHome.exe` 后默认自动启动 `python run.py --vision hybrid --port 8000` 并打开管理界面；同时将灭火器基线权重替换为测试表现更好的 Javay `best3.pt`，兼容模型输出标签 `extinguisher`。
+- 涉及文件：`launcher.py`、`smart_home/adapters.py`、`download_specialized_models.py`、`models/baseline/fire_extinguisher_yolov8.pt`、`models/README.md`、`MODEL_EVALUATION.md`、`README.md`、`tests/test_service.py`、`CHANGELOG.md`。
+- 运行方式：双击 `dist\PixelHome\PixelHome.exe`，或源码运行 `python run.py --vision hybrid`。
+- 测试结果：新增 Javay `extinguisher` 标签兼容测试；灭火器新权重在50轮专项链路测试中正样本 `50/50`、干扰项误报 `1/50`。
+- 注意事项：`dist/` 不进入Git，拉取GitHub源码后需要重新运行 `build_windows.ps1` 才能更新本地打包程序。
+
 ## 2026-07-07
 
 ### 林玄楚 / Codex

@@ -15,4 +15,4 @@
 | 文件 | SHA256 |
 |---|---|
 | `drone_yolo11n.pt` | `311b8bea0a5a9f2b2dd407ade666a91831bbcb4dcd9d4b6580dbe33aac3123be` |
-| `fire_extinguisher_yolov8.pt` | `4f83c93496ae6ac8842e91c70a0477a7dac761848bccb9401729931699ddeb0c` |
+| `fire_extinguisher_yolov8.pt` | `9f03f76db1b14a974d5b7f5db36a6a20f5ab77536ea90e5f3eb3927aef6fe50f` |

@@ -60,7 +60,7 @@ python run.py --vision hybrid --specialized-confidence 0.75
 
 ## Windows桌面程序
 
-阶段一演示可直接双击 `dist/PixelHome/PixelHome.exe`。轻量EXE使用演示模式并自动打开管理界面；YOLO模式从源码或Orange Pi运行。数据库保存在当前用户的 `%LOCALAPPDATA%/PixelHome`，关闭启动窗口会同时停止后台服务。
+阶段一演示可直接双击 `dist/PixelHome/PixelHome.exe`。打包程序会优先启动项目根目录的源码服务，默认运行推荐的 `hybrid` 模式，并自动打开 `http://127.0.0.1:8000/`；等价命令为 `python run.py --vision hybrid --port 8000`。如果本机缺少AI依赖，可切回演示模式或先执行 `python -m pip install -r requirements-ai.txt`。数据库保存在当前用户的 `%LOCALAPPDATA%/PixelHome`，关闭启动窗口会同时停止后台服务。
 
 硬件接口已经预留，Arduino与Orange Pi到位后再接入真实串口和板端推理适配器。
 

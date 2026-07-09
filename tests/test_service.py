@@ -141,6 +141,40 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(0.91, result["confidence"])
         self.assertEqual("specialized", result["mode"])
 
+    def test_specialized_adapter_accepts_javay_extinguisher_label(self):
+        import base64
+        import io
+        from types import SimpleNamespace
+        from PIL import Image
+
+        image = Image.new("RGB", (8, 8), "white")
+        buffer = io.BytesIO(); image.save(buffer, format="PNG")
+        image_data = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+        class Values:
+            def __init__(self, values): self.values = values
+            def tolist(self): return self.values
+
+        class Model:
+            def __init__(self, names, classes, confidences):
+                self.names, self.classes, self.confidences = names, classes, confidences
+                self.conf = None
+            def predict(self, image, **kwargs):
+                self.conf = kwargs.get("conf")
+                return [SimpleNamespace(
+                    names=self.names,
+                    boxes=SimpleNamespace(cls=Values(self.classes), conf=Values(self.confidences)),
+                )]
+
+        extinguisher_model = Model({0: "extinguisher"}, [0], [0.375])
+        adapter = SpecializedVisionAdapter(
+            drone_model=Model({}, [], []),
+            extinguisher_model=extinguisher_model,
+        )
+        result = adapter.detect("javay-upload", image_data)
+        self.assertEqual(["fire_extinguisher"], result["labels"])
+        self.assertEqual(0.3749, extinguisher_model.conf)
+
 
 if __name__ == "__main__":
     unittest.main()

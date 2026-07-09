@@ -1,14 +1,12 @@
-import hashlib
 import shutil
-import tempfile
 import urllib.request
-import zipfile
+import hashlib
 from pathlib import Path
 
 
 DRONE_URL = "https://huggingface.co/marie-kjelberg/drone-detector/resolve/main/yolo11n_drone.pt?download=true"
-FSE_URL = "https://zenodo.org/records/13358169/files/1_FSE%20Detection.zip?download=1"
-FSE_MD5 = "c4765acd9b7c6e8eb0f72113af766d75"
+JAVAY_FIRE_EXTINGUISHER_URL = "https://github.com/Javayhu/Real-Time_Fire_Extinguisher_Detection_System/raw/main/best3.pt"
+JAVAY_FIRE_EXTINGUISHER_SHA256 = "9f03f76db1b14a974d5b7f5db36a6a20f5ab77536ea90e5f3eb3927aef6fe50f"
 
 
 def download(url, destination):
@@ -17,8 +15,8 @@ def download(url, destination):
         shutil.copyfileobj(response, output)
 
 
-def file_md5(path):
-    digest = hashlib.md5()
+def file_sha256(path):
+    digest = hashlib.sha256()
     with path.open("rb") as source:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             digest.update(chunk)
@@ -35,16 +33,12 @@ def main():
         print("Downloading drone detector...")
         download(DRONE_URL, drone_path)
     if not extinguisher_path.exists():
-        print("Downloading FireSafetyNet detector...")
-        with tempfile.TemporaryDirectory() as tempdir:
-            archive = Path(tempdir) / "fse.zip"
-            download(FSE_URL, archive)
-            digest = file_md5(archive)
-            if digest != FSE_MD5:
-                raise RuntimeError(f"FireSafetyNet checksum mismatch: {digest}")
-            with zipfile.ZipFile(archive) as source:
-                with source.open("1_FSE Detection/best.pt") as model, extinguisher_path.open("wb") as output:
-                    shutil.copyfileobj(model, output)
+        print("Downloading Javay fire-extinguisher detector...")
+        download(JAVAY_FIRE_EXTINGUISHER_URL, extinguisher_path)
+        digest = file_sha256(extinguisher_path)
+        if digest != JAVAY_FIRE_EXTINGUISHER_SHA256:
+            extinguisher_path.unlink(missing_ok=True)
+            raise RuntimeError(f"Fire extinguisher checksum mismatch: {digest}")
     print(f"Ready: {drone_path.relative_to(root)}, {extinguisher_path.relative_to(root)}")
 
 
