@@ -12,6 +12,10 @@ const esc = (value) => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;"
 let toastTimer;
 let imageData = null;
 let runtimeMode = 'demo';  // 从 /api/health 获取，未获取到时默认 demo
+let webcamStream = null;   // 摄像头 MediaStream 引用
+let continuousInterval = null;   // 实时检测定时器 ID
+let continuousPending = false;   // 防止连续检测请求重叠
+const CONTINUOUS_INTERVAL_MS = 800;  // 实时检测间隔（毫秒）
 
 function toast(message) {
   const node = $("#toast"); node.textContent = message; node.classList.add("show");
@@ -28,12 +32,27 @@ async function fetchMode() {
 
 function updateDetectButtonState() {
   const btn = $("#detectButton");
-  const needsImage = runtimeMode === 'yolo' || runtimeMode === 'specialized';
-  if (needsImage && !imageData) {
+  const needsImage = runtimeMode === 'yolo' || runtimeMode === 'specialized' || runtimeMode === 'hybrid';
+  const hasImage = imageData || webcamStream;
+
+  if (continuousInterval) {
+    // 实时检测运行中：禁用单次检测按钮
     btn.disabled = true;
-    btn.title = "请先选择检测图片";
+    btn.textContent = "⏳";
+    btn.title = "实时检测运行中…";
+    return;
+  }
+
+  if (needsImage && !hasImage) {
+    btn.disabled = true;
+    btn.title = "请先选择图片或开启摄像头";
+  } else if (needsImage && webcamStream) {
+    btn.disabled = false;
+    btn.textContent = "📸";
+    btn.title = "拍照识别";
   } else {
     btn.disabled = false;
+    btn.textContent = "▶";
     btn.title = "运行识别";
   }
 }
@@ -168,14 +187,25 @@ async function recognize(faceKey) {
   await refresh();
 }
 
-async function detect() {
-  // 非 demo 模式下需要先选择图片
-  if ((runtimeMode === 'yolo' || runtimeMode === 'specialized') && !imageData) {
-    toast("请先选择一张检测图片");
+async function detect(silent = false) {
+  // 摄像头模式：先拍照再识别
+  if (webcamStream) {
+    imageData = captureFromWebcam();
+    if (!imageData) {
+      if (!silent) toast("摄像头拍照失败");
+      return;
+    }
+    updateDetectButtonState();
+  }
+
+  // 非 demo 模式下需要先选择图片或开启摄像头
+  if ((runtimeMode === 'yolo' || runtimeMode === 'specialized' || runtimeMode === 'hybrid') && !imageData) {
+    if (!silent) toast("请先选择一张检测图片或开启摄像头");
     return;
   }
   try {
-    const camera = $("#cameraView"); camera.classList.add("scanning");
+    const camera = $("#cameraView");
+    if (!silent) camera.classList.add("scanning");
     const result = await post("/api/vision/detect", { source: imageData ? "browser-upload" : "demo-camera", image_data: imageData });
     setTimeout(() => { camera.classList.remove("scanning"); camera.classList.add("active"); camera.querySelector("p").textContent = `可信度 ${(result.confidence * 100).toFixed(0)}%`; }, 700);
     if (result.labels.length === 0) {
@@ -187,9 +217,10 @@ async function detect() {
         return `<span>${label}<small>${confText}</small></span>`;
       }).join("");
     }
-    await refresh();
+    // 实时模式下静默刷新告警数据
+    if (!silent) await refresh(); else await fetchAlerts();
   } catch (error) {
-    toast("检测失败: " + error.message);
+    if (!silent) toast("检测失败: " + error.message);
   }
 }
 
@@ -257,9 +288,140 @@ $("#cleanupButton").addEventListener("click", async () => {
 });
 $("#imageInput").addEventListener("change", event => {
   const file = event.target.files[0]; if (!file) return;
+  // 如果摄像头开着，先关掉
+  if (webcamStream) stopWebcam();
   const reader = new FileReader();
   reader.onload = () => { imageData = reader.result; const view = $("#cameraView"); view.style.backgroundImage = `url("${imageData}")`; view.style.backgroundSize = "contain"; view.style.backgroundPosition = "center"; view.style.backgroundRepeat = "no-repeat"; view.querySelector("p").textContent = file.name; updateDetectButtonState(); toast("图片已载入，可运行目标识别"); };
   reader.readAsDataURL(file);
+});
+
+// ── 摄像头控制 ──────────────────────────────────────────
+async function startWebcam() {
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "environment" }
+    });
+    const video = $("#webcamVideo");
+    video.srcObject = webcamStream;
+    video.style.display = "block";
+    // 隐藏文件上传的背景图
+    const view = $("#cameraView");
+    view.style.backgroundImage = "none";
+    view.querySelector("p").textContent = "摄像头实时预览";
+    // 更新按钮状态
+    $("#webcamButton").textContent = "🔴 关闭摄像头";
+    $("#webcamButton").classList.add("active");
+    $("#continuousButton").classList.remove("hidden");
+    imageData = null;
+    updateDetectButtonState();
+    toast("摄像头已开启，可拍照或开启实时检测");
+  } catch (error) {
+    toast("无法访问摄像头: " + (error.name === "NotAllowedError" ? "请允许浏览器使用摄像头权限" : error.message));
+    webcamStream = null;
+  }
+}
+
+function stopWebcam() {
+  stopContinuous();
+  if (webcamStream) {
+    webcamStream.getTracks().forEach(track => track.stop());
+    webcamStream = null;
+  }
+  const video = $("#webcamVideo");
+  video.srcObject = null;
+  video.style.display = "none";
+  const view = $("#cameraView");
+  view.style.backgroundImage = "";
+  view.querySelector("p").textContent = "等待摄像头画面";
+  $("#webcamButton").textContent = "📷 开启摄像头";
+  $("#webcamButton").classList.remove("active");
+  $("#continuousButton").classList.add("hidden");
+  imageData = null;
+  updateDetectButtonState();
+}
+
+function captureFromWebcam() {
+  const video = $("#webcamVideo");
+  const canvas = $("#webcamCanvas");
+  if (!video.videoWidth) return null;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
+$("#webcamButton").addEventListener("click", () => {
+  if (webcamStream) {
+    stopWebcam();
+  } else {
+    startWebcam();
+  }
+});
+
+// ── 实时连续检测 ────────────────────────────────────────
+async function continuousTick() {
+  if (continuousPending) return;  // 上一帧还在等后端响应，跳过
+  continuousPending = true;
+  try {
+    const dataUrl = captureFromWebcam();
+    if (!dataUrl) return;
+    const result = await post("/api/vision/detect", {
+      source: "webcam-live",
+      image_data: dataUrl,
+    });
+    // 更新 UI
+    const camera = $("#cameraView");
+    camera.querySelector("p").textContent =
+      `实时检测 · ${(result.confidence * 100).toFixed(0)}%`;
+
+    if (result.labels.length === 0) {
+      $("#detectionLabels").innerHTML =
+        '<span class="no-detection">未检测到目标</span>';
+    } else {
+      $("#detectionLabels").innerHTML = result.labels.map(label => {
+        const conf = result.label_confidences?.[label];
+        const confText = conf != null ? ` ${(conf * 100).toFixed(0)}%` : '';
+        return `<span>${label}<small>${confText}</small></span>`;
+      }).join("");
+    }
+    // 静默拉取告警
+    await fetchAlerts();
+  } catch (_) {
+    // 连续模式下网络抖动不弹 toast，静默跳过
+  } finally {
+    continuousPending = false;
+  }
+}
+
+function startContinuous() {
+  if (continuousInterval) return;
+  continuousInterval = setInterval(continuousTick, CONTINUOUS_INTERVAL_MS);
+  $("#continuousButton").textContent = "⏹ 停止实时";
+  $("#continuousButton").classList.add("active");
+  $("#cameraView").classList.add("scanning");
+  updateDetectButtonState();
+  toast(`实时检测已开启 · 每 ${(CONTINUOUS_INTERVAL_MS / 1000).toFixed(1)} 秒识别一次`);
+}
+
+function stopContinuous() {
+  if (continuousInterval) {
+    clearInterval(continuousInterval);
+    continuousInterval = null;
+  }
+  continuousPending = false;
+  $("#continuousButton").textContent = "🔄 实时检测";
+  $("#continuousButton").classList.remove("active");
+  $("#cameraView").classList.remove("scanning");
+  updateDetectButtonState();
+}
+
+$("#continuousButton").addEventListener("click", () => {
+  if (continuousInterval) {
+    stopContinuous();
+  } else {
+    startContinuous();
+  }
 });
 (async function init() {
   await fetchMode();

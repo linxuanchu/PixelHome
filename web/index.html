@@ -75,8 +75,18 @@
 
       <article class="vision-panel panel">
         <div class="panel-heading"><div><span class="kicker">YOLO PORT</span><h2>目标识别</h2></div><button class="icon-button" id="detectButton" title="运行识别">▶</button></div>
-        <div class="camera-view" id="cameraView"><div class="scan-line"></div><div class="target-box"><span>CAM-01</span></div><p>等待摄像头画面</p></div>
-        <label class="upload-button">选择检测图片<input id="imageInput" type="file" accept="image/*"></label>
+        <div class="camera-view" id="cameraView">
+          <video id="webcamVideo" autoplay playsinline muted></video>
+          <canvas id="webcamCanvas"></canvas>
+          <div class="scan-line"></div>
+          <div class="target-box"><span>CAM-01</span></div>
+          <p>等待摄像头画面</p>
+        </div>
+        <div class="vision-actions">
+          <button id="webcamButton" class="toggle-button">📷 开启摄像头</button>
+          <button id="continuousButton" class="toggle-button hidden">🔄 实时检测</button>
+          <label class="upload-button">选择检测图片<input id="imageInput" type="file" accept="image/*"></label>
+        </div>
         <div id="detectionLabels" class="label-row"><span>暂无识别结果</span></div>
         <div class="alert-row hidden" id="alertRow">
           <button class="alert-indicator" id="alertDrone" data-alert="detection:drone" title="无人机检测信号 · 点击确认消除">
