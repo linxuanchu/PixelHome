@@ -182,3 +182,132 @@ class SpecializedVisionAdapter(DemoVisionAdapter):
         }
         print(f"[specialized] final result: labels={unique_labels} confidences={label_confs}")
         return result
+
+
+class HybridVisionAdapter(DemoVisionAdapter):
+    """Three-model parallel detector: general YOLO + drone + fire extinguisher.
+
+    Runs the general-purpose YOLO model for broad COCO-class coverage and
+    simultaneously runs the two specialised models for drone and fire
+    extinguisher.  Specialised detections are only accepted when their
+    confidence exceeds *specialized_confidence*, which helps suppress the
+    false positives that plague the pure specialised pipeline.
+    """
+
+    mode = "hybrid"
+
+    def __init__(
+        self,
+        general_model_path="yolo11n.pt",
+        drone_model_path="models/baseline/drone_yolo11n.pt",
+        extinguisher_model_path="models/baseline/fire_extinguisher_yolov8.pt",
+        general_model=None,
+        drone_model=None,
+        extinguisher_model=None,
+        specialized_confidence=0.8,
+    ):
+        try:
+            from ultralytics import YOLO
+        except ImportError as error:
+            raise RuntimeError(
+                "Hybrid vision requires: pip install -r requirements-ai.txt"
+            ) from error
+
+        # General-purpose model (COCO 80 classes)
+        self.general_model = general_model or YOLO(general_model_path)
+        self.general_model_path = str(general_model_path)
+
+        # Specialised single-class models
+        self.drone_model = drone_model or YOLO(drone_model_path)
+        self.extinguisher_model = extinguisher_model or YOLO(extinguisher_model_path)
+        self.drone_model_path = str(drone_model_path)
+        self.extinguisher_model_path = str(extinguisher_model_path)
+
+        self.specialized_confidence = specialized_confidence
+
+        # (model_instance, canonical_output_label, accepted_class_names)
+        self._specialized = (
+            (self.drone_model, "drone", {"drone"}),
+            (
+                self.extinguisher_model,
+                "fire_extinguisher",
+                {"fire extinguisher", "fire_extinguisher"},
+            ),
+        )
+
+    def detect(self, source="uploaded-image", image_data=None):
+        if not image_data:
+            raise ValueError("Hybrid vision mode requires image_data")
+
+        image = UltralyticsVisionAdapter.decode_image(image_data)
+
+        labels: list[str] = []
+        confidences: list[float] = []
+
+        # ── 1. General YOLO (all COCO classes) ──────────────────────────
+        general_results = self.general_model.predict(image, verbose=False)
+        for result in general_results:
+            names = result.names
+            for class_id, confidence in zip(
+                result.boxes.cls.tolist(), result.boxes.conf.tolist()
+            ):
+                labels.append(str(names[int(class_id)]))
+                confidences.append(float(confidence))
+
+        # ── 2. Specialised models (drone + fire_extinguisher) ───────────
+        for model, canonical_label, accepted_names in self._specialized:
+            results = model.predict(
+                image, verbose=False, conf=self.specialized_confidence
+            )
+            for result in results:
+                for class_id, confidence in zip(
+                    result.boxes.cls.tolist(), result.boxes.conf.tolist()
+                ):
+                    detected_name = str(result.names[int(class_id)]).strip().lower()
+                    passed = detected_name in accepted_names
+                    print(
+                        f"[hybrid] {canonical_label:>18s} model "
+                        f"detected class={int(class_id):>2d} "
+                        f'name="{result.names[int(class_id)]}" '
+                        f"conf={confidence:.4f} "
+                        f"-> {'ACCEPT' if passed else 'REJECT'}"
+                    )
+                    if passed:
+                        labels.append(canonical_label)
+                        confidences.append(float(confidence))
+
+        # ── 3. Deduplicate, keep only the top-1 label ────────────────────
+        label_confs: dict[str, float] = {}
+        for label, conf in zip(labels, confidences):
+            label_confs[label] = max(label_confs.get(label, 0), conf)
+        label_confs = {k: round(v, 4) for k, v in label_confs.items()}
+
+        if label_confs:
+            top_label, top_conf = max(label_confs.items(), key=lambda kv: kv[1])
+            best_labels = [top_label]
+            best_confs = {top_label: top_conf}
+            best_conf = top_conf
+        else:
+            best_labels = []
+            best_confs = {}
+            best_conf = 0.0
+
+        result = {
+            "source": source,
+            "labels": best_labels,
+            "label_confidences": best_confs,
+            "confidence": best_conf,
+            "count": len(best_labels),
+            "mode": self.mode,
+            "model": "hybrid-ensemble",
+            "models": {
+                "general": self.general_model_path,
+                "drone": self.drone_model_path,
+                "fire_extinguisher": self.extinguisher_model_path,
+            },
+        }
+        print(
+            f"[hybrid] top-1 result: label={best_labels} "
+            f"confidence={best_conf:.4f}"
+        )
+        return result
