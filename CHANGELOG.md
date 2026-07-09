@@ -45,6 +45,28 @@
 - 测试结果：目前yolo模式下yolo测试正常但没有训练集不能识别灭火器和无人机，specialize模式下这两个模型能正确识别灭火器和无人机，但是大概率会将其他物品意外识别成灭火器和无人机
 - 注意事项：目前这两个模型能正确识别灭火器和无人机，但是大概率会将其他物品意外识别成灭火器和无人机
 
+### 姚宇鹏
+
+- 修改内容：新增 Hybrid 三模型并行识别模式，合并通用 YOLO11n（COCO 80类）与两个专用模型（无人机+灭火器）同时推理；hybrid 模式下仅输出置信度最高的单个标签，无人机/灭火器检测阈值默认提升至 80% 以抑制误报。前端新增电脑摄像头实时预览与连续检测功能，支持每 0.8 秒自动拍帧并回传后端识别。
+- 涉及文件： smart_home/adapters.py（新增 HybridVisionAdapter 类）、smart_home/server.py（新增 --vision hybrid 选项和 --specialized-confidence 参数）、web/index.html（新增 video/canvas 元素和摄像头/实时检测按钮）、web/app.js（新增 startWebcam/stopWebcam/captureFromWebcam/startContinuous/stopContinuous/continuousTick 函数，detect() 支持静默模式，updateDetectButtonState() 适配 hybrid 模式）、web/styles.css（新增摄像头视频、实时检测按钮及呼吸动画样式）。
+- 运行方式：# 确保已安装 AI 依赖
+python -m pip install -r requirements-ai.txt
+
+# 确保基线模型已下载（若 models/baseline/ 下无权重文件）
+python download_specialized_models.py
+
+# 启动 hybrid 模式（默认阈值 0.8）
+python run.py --vision hybrid
+
+# 可选：手动指定专用模型置信度阈值
+python run.py --vision hybrid --specialized-confidence 0.7
+
+- 测试结果： 已运行 python -m unittest discover -s tests -v，13 个测试全部通过。hybrid 模式下通用物体（person、chair 等）能正常检出并显示最高置信度标签；无人机/灭火器在置信度 ≥ 80% 时正确触发前端告警灯，低置信度假阳性被有效过滤。摄像头实时流在 localhost 下稳定运行，连续检测请求堆积保护（continuousPending 锁）工作正常。
+
+- 注意事项：摄像头依赖浏览器 getUserMedia API，必须通过 localhost / 127.0.0.1 访问（非 HTTPS 下浏览器限制）；如果电脑有多个摄像头，代码默认优先使用后置/环境摄像头（facingMode: "environment"），笔记本内置摄像头可能需要改为 "user"；
+连续检测默认间隔 800ms，在 web/app.js 顶部 CONTINUOUS_INTERVAL_MS 常量处可调整；
+hybrid 模式同时加载三个模型（约 33 MB），首次启动加载时间较长，CPU 推理每帧约 200-400ms，Orange Pi 部署前建议导出 ONNX；
+
 ```
 
 
