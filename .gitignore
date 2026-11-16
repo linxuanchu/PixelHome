@@ -16,3 +16,9 @@ datasets/*
 /.vision-deps-src/
 /build/
 /dist/
+/model_lab/
+/data/captures/
+/models/face/*.onnx
+/Ultralytics/
+/data/ultralytics/
+/artifacts/

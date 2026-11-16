@@ -949,14 +949,21 @@ main {
 
 .vision-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
 }
 
 .vision-actions .upload-button {
   margin-top: 0;
-  flex: 1;
+  flex: 1 1 8rem;
 }
+
+#captureStatus { overflow-wrap: anywhere; }
+#historyResults { max-height: 15rem; overflow-y: auto; }
+.access-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; }
+#cameraDevice { max-width: 100%; color: var(--text-primary); background: #11192c; }
+.system-status.offline .status-dot { background: #fb7185; box-shadow: none; }
 
 #webcamButton {
   padding: 10px 14px;
@@ -1394,7 +1401,7 @@ main {
 
 @media (max-width: 560px) {
   .topbar { min-height: 58px; }
-  .system-status span:last-child { display: none; }
+  .system-status { font-size: 11px; white-space: nowrap; }
   .intro { align-items: start; flex-direction: column; }
   .intro h1 { font-size: 24px; }
   .primary { width: 100%; }

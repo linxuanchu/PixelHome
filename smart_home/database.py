@@ -20,6 +20,12 @@ CREATE TABLE IF NOT EXISTS telemetry (
     unit TEXT NOT NULL DEFAULT '',
     recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS face_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    person_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+    feature TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     category TEXT NOT NULL,
@@ -62,6 +68,7 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_metric_time ON telemetry(metric, record
 CREATE INDEX IF NOT EXISTS idx_events_category_time ON events(category, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_access_subject_time ON access_attempts(subject_key, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_people_authorized ON people(authorized);
+CREATE INDEX IF NOT EXISTS idx_face_templates_person ON face_templates(person_id);
 """
 
 

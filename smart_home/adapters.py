@@ -220,13 +220,15 @@ class HybridVisionAdapter(DemoVisionAdapter):
         drone_model=None,
         extinguisher_model=None,
         specialized_confidence=0.8,
+        extinguisher_confidence=None,
     ):
-        try:
-            from ultralytics import YOLO
-        except ImportError as error:
-            raise RuntimeError(
-                "Hybrid vision requires: pip install -r requirements-ai.txt"
-            ) from error
+        if any(model is None for model in (general_model, drone_model, extinguisher_model)):
+            try:
+                from ultralytics import YOLO
+            except ImportError as error:
+                raise RuntimeError(
+                    "Hybrid vision requires: pip install -r requirements-ai.txt"
+                ) from error
 
         # General-purpose model (COCO 80 classes)
         self.general_model = general_model or YOLO(general_model_path)
@@ -238,7 +240,12 @@ class HybridVisionAdapter(DemoVisionAdapter):
         self.drone_model_path = str(drone_model_path)
         self.extinguisher_model_path = str(extinguisher_model_path)
 
-        self.specialized_confidence = specialized_confidence
+        self.class_thresholds = {
+            "drone": specialized_confidence,
+            "fire_extinguisher": specialized_confidence if extinguisher_confidence is None else extinguisher_confidence,
+        }
+        if any(not 0 <= value <= 1 for value in self.class_thresholds.values()):
+            raise ValueError("Hybrid confidence thresholds must be between 0 and 1")
 
         # (model_instance, canonical_output_label, accepted_class_names)
         self._specialized = (
@@ -271,15 +278,16 @@ class HybridVisionAdapter(DemoVisionAdapter):
 
         # ── 2. Specialised models (drone + fire_extinguisher) ───────────
         for model, canonical_label, accepted_names in self._specialized:
+            threshold = self.class_thresholds[canonical_label]
             results = model.predict(
-                image, verbose=False, conf=self.specialized_confidence
+                image, verbose=False, conf=threshold
             )
             for result in results:
                 for class_id, confidence in zip(
                     result.boxes.cls.tolist(), result.boxes.conf.tolist()
                 ):
                     detected_name = str(result.names[int(class_id)]).strip().lower()
-                    passed = detected_name in accepted_names
+                    passed = detected_name in accepted_names and confidence >= threshold
                     print(
                         f"[hybrid] {canonical_label:>18s} model "
                         f"detected class={int(class_id):>2d} "
@@ -298,7 +306,10 @@ class HybridVisionAdapter(DemoVisionAdapter):
         label_confs = {k: round(v, 4) for k, v in label_confs.items()}
 
         if label_confs:
-            top_label, top_conf = max(label_confs.items(), key=lambda kv: kv[1])
+            # Scores from separately trained models are not calibrated against each other.
+            # A validated course target takes precedence over a generic COCO fallback.
+            priority = {"drone", "fire_extinguisher"}
+            top_label, top_conf = max(label_confs.items(), key=lambda kv: (kv[0] in priority, kv[1]))
             best_labels = [top_label]
             best_confs = {top_label: top_conf}
             best_conf = top_conf

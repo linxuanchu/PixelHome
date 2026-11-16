@@ -1,4 +1,6 @@
-# Pixel Home 阶段 1
+# PixelHome
+
+第二阶段的 Arduino 固件、摄像头门禁、照片保存和历史查询见 [阶段二联调与验收](STAGE2.md)。首次运行执行 `setup_stage2.ps1`，再用 `start_stage2.ps1`；传入 `-SerialPort COMx` 才会启用实体设备。不传串口时人脸和 YOLO 仍可真实运行，但房屋设备是模拟的。下文保留阶段一的设计和使用记录。
 
 ## 协作提醒
 
