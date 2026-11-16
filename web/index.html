@@ -8,8 +8,8 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      "three": "/vendor/three/three.module.js",
+      "three/addons/": "/vendor/three/"
     }
   }
   </script>
@@ -23,7 +23,7 @@
   <main>
     <section class="intro">
       <div>
-        <p class="eyebrow">STAGE 01 / DATA INTELLIGENCE</p>
+        <p class="eyebrow">PIXELHOME / CONTROL CENTER</p>
         <h1>早上好，家里一切正常。</h1>
         <p>数据、识别和设备控制都已接入同一座像素小屋。</p>
       </div>
@@ -32,7 +32,7 @@
 
     <section class="dashboard-grid">
       <article class="scene-panel panel">
-        <div class="panel-heading"><div><span class="kicker">LIVE ROOM</span><h2>房屋状态</h2></div><div class="view-toggles"><button class="mode-tag active" id="btn3D" title="3D 实景视图">3D</button><button class="mode-tag" id="btnPixel" title="像素风视图">像素</button><span class="mode-tag">SIM</span></div></div>
+        <div class="panel-heading"><div><span class="kicker">LIVE ROOM</span><h2>房屋状态</h2></div><div class="view-toggles"><button class="mode-tag active" id="btn3D" title="3D 实景视图">3D</button><button class="mode-tag" id="btnPixel" title="像素风视图">像素</button><span class="mode-tag" id="hardwareBadge">—</span></div></div>
         <div class="pixel-room" id="roomContainer" aria-label="智能家居实时状态场景">
           <div class="room3d-layer" id="room3dLayer"><div class="ctrl-hint">🖱 左键旋转 · 滚轮缩放 · 右键平移 · G 切换墙壁 · R 重置视角</div></div>
           <canvas id="glSky"></canvas>
@@ -63,13 +63,17 @@
         <div class="control-row"><div><strong>入口门</strong><small>授权后自动开启</small></div><button class="toggle-button" data-device="door">开门</button></div>
         <div class="control-row"><div><strong>通风风扇</strong><small>支持温度联动</small></div><label class="switch"><input id="fanToggle" type="checkbox"><span></span></label></div>
         <div class="control-slider"><div><strong>客厅灯光</strong><output id="lightOutput">45%</output></div><input id="lightSlider" type="range" min="0" max="100" value="45"></div>
-        <div class="tip"><span>!</span><p>当前是安全模拟模式，阶段 2 可直接替换为 MQTT 或串口设备。</p></div>
+        <div class="tip"><span>!</span><p id="hardwareStatus">正在读取设备状态</p></div>
       </article>
 
       <article class="access-panel panel">
         <div class="panel-heading"><div><span class="kicker">ACCESS</span><h2>人脸门禁</h2></div><span><b id="peopleCount">0</b> 人</span></div>
-        <p class="section-note">课程要求演示“2真1假”，点击身份即可模拟摄像头识别。</p>
+        <p class="section-note" id="faceMode">模拟门禁</p>
         <div id="faceList" class="face-list"></div>
+        <div class="vision-actions">
+          <button id="cameraAccessButton" class="toggle-button hidden" type="button">验证人脸</button>
+          <label id="autoAccessControl" class="access-toggle hidden"><input id="autoAccessToggle" type="checkbox" disabled> 自动门禁</label>
+        </div>
         <div id="accessResult" class="access-result neutral">等待识别</div>
       </article>
 
@@ -83,10 +87,13 @@
           <p>等待摄像头画面</p>
         </div>
         <div class="vision-actions">
+          <select id="cameraDevice" class="toggle-button hidden" aria-label="摄像头设备"></select>
           <button id="webcamButton" class="toggle-button">📷 开启摄像头</button>
+          <button id="savePhotoButton" class="toggle-button" type="button" disabled>拍照保存</button>
           <button id="continuousButton" class="toggle-button hidden">🔄 实时检测</button>
           <label class="upload-button">选择检测图片<input id="imageInput" type="file" accept="image/*"></label>
         </div>
+        <p id="captureStatus" class="section-note" role="status"></p>
         <div id="detectionLabels" class="label-row"><span>暂无识别结果</span></div>
         <div class="alert-row hidden" id="alertRow">
           <button class="alert-indicator" id="alertDrone" data-alert="detection:drone" title="无人机检测信号 · 点击确认消除">
@@ -99,8 +106,15 @@
       </article>
 
       <article class="history-panel panel">
-        <div class="panel-heading"><div><span class="kicker">TIMELINE</span><h2>温度记录</h2></div><span>最近采样</span></div>
+        <div class="panel-heading"><div><span class="kicker">TIMELINE</span><h2>历史记录</h2></div><span>最近采样</span></div>
         <div class="chart" id="temperatureChart" aria-label="温度历史折线图"></div>
+        <form id="historyForm" class="admin-form">
+          <label>指标<select id="historyMetric"><option value="temperature">温度</option><option value="light">灯光</option><option value="door">门</option><option value="window">窗</option></select></label>
+          <label>起始<input id="historyStart" type="datetime-local"></label>
+          <label>结束<input id="historyEnd" type="datetime-local"></label>
+          <div class="form-actions"><button class="primary" type="submit">查询</button></div>
+        </form>
+        <div id="historyResults" class="admin-list" aria-live="polite"></div>
       </article>
 
       <article class="events-panel panel">
@@ -114,7 +128,7 @@
           <input id="personId" type="hidden">
           <label>姓名<input id="personName" required maxlength="40"></label>
           <label>身份<select id="personRole"><option value="resident">住户</option><option value="visitor">访客</option><option value="admin">管理员</option></select></label>
-          <label>识别键<input id="personFaceKey" required maxlength="80"></label>
+          <label id="personFaceKeyLabel">模拟识别键<input id="personFaceKey" maxlength="80"></label>
           <label class="check-field"><input id="personAuthorized" type="checkbox" checked>允许门禁</label>
           <div class="form-actions"><button class="primary" type="submit">保存</button><button id="cancelPersonButton" type="button">取消</button></div>
         </form>
@@ -123,7 +137,7 @@
 
       <article class="security-panel panel">
         <div class="panel-heading"><div><span class="kicker">SECURITY</span><h2>可疑人员</h2></div><span><b id="suspectCount">0</b> 条待处理</span></div>
-        <p class="section-note">默认10分钟内失败3次触发告警，识别照片接口已预留。</p>
+        <p class="section-note">默认 10 分钟内失败 3 次触发告警。</p>
         <div id="suspectList" class="admin-list"></div>
       </article>
 

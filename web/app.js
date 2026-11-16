@@ -7,11 +7,17 @@ const api = async (path, options = {}) => {
 const post = (path, body) => api(path, { method: "POST", body: JSON.stringify(body) });
 const patch = (path, body) => api(path, { method: "PATCH", body: JSON.stringify(body) });
 const remove = (path) => api(path, { method: "DELETE" });
-const stateText = (value) => ({ open: "已打开", closed: "已关闭" }[value] || value);
+const stateText = (value) => ({ open: "已打开", closed: "已关闭" }[value] || value || "—");
 const esc = (value) => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
 let toastTimer;
 let imageData = null;
 let runtimeMode = 'demo';  // 从 /api/health 获取，未获取到时默认 demo
+let cameraFace = false;
+let realHardware = false;
+let climateMode = "auto";
+let frameActionPending = false;
+let cameraStarting = false;
+let autoAccessTimer = null;
 let webcamStream = null;   // 摄像头 MediaStream 引用
 let continuousInterval = null;   // 实时检测定时器 ID
 let continuousPending = false;   // 防止连续检测请求重叠
@@ -26,6 +32,14 @@ async function fetchMode() {
   try {
     const health = await api("/api/health");
     runtimeMode = health.mode || 'demo';
+    cameraFace = Boolean(health.face_camera);
+    realHardware = health.hardware === "arduino";
+    $("#cameraAccessButton").classList.toggle("hidden", !cameraFace);
+    $("#autoAccessControl").classList.toggle("hidden", !cameraFace);
+    $("#faceList").classList.toggle("hidden", cameraFace);
+    $("#personFaceKeyLabel").classList.toggle("hidden", cameraFace);
+    $("#faceMode").textContent = cameraFace ? "摄像头门禁" : "模拟身份验证";
+    $("#hardwareBadge").textContent = realHardware ? "UNO" : "SIM";
     updateDetectButtonState();
   } catch (_) { /* 保持默认 demo 模式 */ }
 }
@@ -58,14 +72,23 @@ function updateDetectButtonState() {
 }
 
 function renderHome(home) {
-  $("#temperature").textContent = `${home.temperature} °C`;
-  $("#sceneTemp").textContent = `${home.temperature}°`;
+  $("#temperature").textContent = home.temperature == null ? "—" : `${home.temperature} °C`;
+  $("#sceneTemp").textContent = home.temperature == null ? "—" : `${home.temperature}°`;
   $("#doorState").textContent = stateText(home.door);
   $("[data-device='door']").textContent = home.door === 'open' ? '关门' : '开门';
+  $("[data-device='door']").disabled = realHardware && (!home.online || home.door !== "open");
   $("#windowState").textContent = stateText(home.window);
-  $("#lightState").textContent = `${home.light}%`;
-  $("#lightOutput").textContent = `${home.light}%`; $("#lightSlider").value = home.light;
-  $("#fanToggle").checked = home.fan;
+  $("#lightState").textContent = home.light == null ? "—" : `${home.light}%`;
+  $("#lightOutput").textContent = $("#lightState").textContent;
+  if (home.light != null && document.activeElement !== $("#lightSlider")) $("#lightSlider").value = home.light;
+  $("#lightSlider").disabled = !home.online;
+  $("#fanToggle").checked = Boolean(home.fan);
+  $("#fanToggle").disabled = !home.online || (realHardware && climateMode === "auto");
+  $("#connectionText").textContent = realHardware ? (home.online ? "Arduino 在线" : "Arduino 离线") : "模拟空间在线";
+  $(".system-status").classList.toggle("offline", !home.online);
+  $("#hardwareStatus").textContent = realHardware
+    ? `${home.port} · ${!home.online ? "未收到 UNO 回复" : home.temperature == null ? "温度传感器无数据" : "温度传感器在线"}`
+    : "模拟设备";
   $("#sceneDoor").classList.toggle("open", home.door === "open");
   $("#sceneLamp").classList.toggle("on", home.light > 10);
   $("#sceneLamp").style.opacity = Math.max(.35, home.light / 100);
@@ -73,15 +96,16 @@ function renderHome(home) {
 }
 
 function renderScore(score) {
-  $("#homeScore").textContent = score.score;
+  $("#homeScore").textContent = score.score ?? "—";
   $("#homeScoreLabel").textContent = score.label;
   $("#homeScore").parentElement.title = score.reasons.join("；");
 }
 
 function renderPeople(people) {
   $("#peopleCount").textContent = people.length;
+  if (cameraFace) return;
   $("#faceList").innerHTML = people.map(person => `
-    <button class="face-card ${person.authorized ? "" : "denied"}" data-face="${person.face_key}">
+    <button class="face-card ${person.authorized ? "" : "denied"}" data-face="${esc(person.face_key)}">
       <span class="avatar">${esc(person.name.slice(0, 1))}</span><strong>${esc(person.name)}</strong>
       <span>${person.authorized ? "授权住户" : "未授权测试"}</span>
     </button>`).join("");
@@ -89,9 +113,19 @@ function renderPeople(people) {
 }
 
 function renderAdminPeople(people) {
-  $("#adminPeople").innerHTML = people.map(person => `<div class="admin-row"><div><strong>${esc(person.name)}</strong><small>${esc(person.role)} · ${person.authorized ? "已授权" : "已停用"} · ${esc(person.face_key)}</small></div><div class="row-actions"><button data-edit-person="${person.id}" title="编辑">✎</button><button class="danger" data-delete-person="${person.id}" title="删除">×</button></div></div>`).join("");
+  $("#adminPeople").innerHTML = people.map(person => `<div class="admin-row"><div><strong>${esc(person.name)}</strong><small>${esc(person.role)} · ${person.authorized ? "已授权" : "已停用"} · ${cameraFace ? `人脸样本 ${person.face_samples}/5` : esc(person.face_key)}</small></div><div class="row-actions">${cameraFace ? `<button data-enroll-person="${person.id}" title="录入人脸" aria-label="录入 ${esc(person.name)} 的人脸">◉</button>${person.face_samples ? `<button data-clear-faces="${person.id}" title="清除人脸样本">↺</button>` : ""}` : ""}<button data-edit-person="${person.id}" title="编辑">✎</button><button class="danger" data-delete-person="${person.id}" title="删除">×</button></div></div>`).join("");
   document.querySelectorAll("[data-edit-person]").forEach(button => button.addEventListener("click", () => openPersonForm(people.find(person => person.id === Number(button.dataset.editPerson)))));
   document.querySelectorAll("[data-delete-person]").forEach(button => button.addEventListener("click", () => deletePerson(Number(button.dataset.deletePerson))));
+  document.querySelectorAll("[data-enroll-person]").forEach(button => button.addEventListener("click", () => useFrame(async frame => {
+    const result = await post(`/api/people/${button.dataset.enrollPerson}/faces`, { image_data: frame });
+    toast(`人脸样本已录入（${result.face_samples}/5）`);
+    await refresh();
+  })));
+  document.querySelectorAll("[data-clear-faces]").forEach(button => button.addEventListener("click", async () => {
+    if (!window.confirm("清除此人员的全部人脸样本？")) return;
+    try { await remove(`/api/people/${button.dataset.clearFaces}/faces`); await refresh(); }
+    catch (error) { toast(error.message); }
+  }));
 }
 
 function renderSuspects(suspects) {
@@ -111,7 +145,7 @@ function renderSettings(settings, storage) {
 
 function renderEvents(events) {
   $("#eventList").innerHTML = events.length ? events.slice(0, 6).map(event => `
-    <div class="event ${event.level}"><span class="event-dot"></span><p>${event.message}</p><time>${event.created_at.slice(11, 16)}</time></div>`).join("") : "<p>暂无系统动态</p>";
+    <div class="event ${esc(event.level)}"><span class="event-dot"></span><p>${esc(event.message)}</p><time>${new Date(event.created_at.replace(" ", "T") + "Z").toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></div>`).join("") : "<p>暂无系统动态</p>";
 }
 
 function renderChart(history) {
@@ -140,9 +174,11 @@ function renderChart(history) {
 async function refresh() {
   try {
     const [dashboard, people, history, suspects, settings, storage] = await Promise.all([api("/api/dashboard"), api("/api/people"), api("/api/history?limit=80"), api("/api/admin/suspects"), api("/api/admin/settings"), api("/api/admin/storage")]);
-    renderHome(dashboard.home); renderScore(dashboard.home_score); renderPeople(people); renderAdminPeople(people); renderSuspects(suspects); renderSettings(settings, storage); renderEvents(dashboard.events); renderChart(history);
+    climateMode = dashboard.climate.mode;
+    renderHome(dashboard.home); renderScore(dashboard.home_score); renderPeople(people); renderAdminPeople(people); renderSuspects(suspects);
+    if (!$("#settingsForm").contains(document.activeElement)) renderSettings(settings, storage);
+    renderEvents(dashboard.events); renderChart(history);
     renderAlerts(dashboard.alerts || {});
-    $("#connectionText").textContent = "模拟空间在线";
   } catch (error) { $("#connectionText").textContent = "连接中断"; toast(error.message); }
 }
 
@@ -161,7 +197,9 @@ function closePersonForm() { $("#personForm").classList.add("hidden"); $("#perso
 async function savePerson(event) {
   event.preventDefault();
   const id = $("#personId").value;
-  const payload = { name: $("#personName").value.trim(), role: $("#personRole").value, face_key: $("#personFaceKey").value.trim(), authorized: $("#personAuthorized").checked };
+  const payload = { name: $("#personName").value.trim(), role: $("#personRole").value, authorized: $("#personAuthorized").checked };
+  if (!cameraFace || !id) payload.face_key = cameraFace ? crypto.randomUUID() : $("#personFaceKey").value.trim();
+  if (!payload.name || payload.face_key === "") { toast("请填写完整人员信息"); return; }
   try { id ? await patch(`/api/people/${id}`, payload) : await post("/api/people", payload); closePersonForm(); toast(id ? "人员信息已更新" : "授权人员已新增"); refresh(); }
   catch (error) { toast(error.message); }
 }
@@ -177,14 +215,62 @@ async function command(payload) {
 }
 
 async function recognize(faceKey) {
-  const resultNode = $("#accessResult"); resultNode.className = "access-result neutral"; resultNode.textContent = "识别中...";
-  const result = await post("/api/access/recognize", { face_key: faceKey });
-  resultNode.className = `access-result ${result.authorized ? "success" : "warning"}`;
-  resultNode.textContent = result.authorized ? `识别通过 · ${result.person.name} · ${(result.confidence * 100).toFixed(0)}%` : "识别拒绝 · 未授权人员 · 已自动关门";
-  if (!result.authorized) {
-    await command({ device: "door", action: "close" });
+  try { renderAccess(await post("/api/access/recognize", { face_key: faceKey })); await refresh(); }
+  catch (error) { toast(error.message); }
+}
+
+function renderAccess(result) {
+  const node = $("#accessResult");
+  node.className = `access-result ${result.authorized && result.door_confirmed ? "success" : "warning"}`;
+  const outcome = result.authorized ? `身份通过 · ${result.person.name}`
+    : result.reason === "invalid_face" ? "拒绝 · 未检测到一张清晰人脸" : "拒绝 · 未授权人员";
+  node.textContent = `${outcome} · ${result.door_confirmed
+    ? (result.authorized ? "已发送开门指令" : "门保持关闭") : "门控未确认"}`;
+}
+
+async function useFrame(action) {
+  if (frameActionPending) return;
+  const frame = captureFromWebcam();
+  if (!frame) { toast("请先开启摄像头并等待画面"); return; }
+  frameActionPending = true;
+  try { await action(frame); }
+  catch (error) { toast(error.message); }
+  finally { frameActionPending = false; }
+}
+
+async function checkCameraAccess(frame, automatic = false) {
+  const result = await post("/api/access/camera", { image_data: frame, automatic });
+  if (result.status === "checked") {
+    renderAccess(result);
+    $("#captureStatus").textContent = result.snapshot_path;
+    await refresh();
+  } else if (result.status === "no_templates") {
+    const node = $("#accessResult");
+    node.className = "access-result neutral";
+    node.textContent = "尚未录入人脸";
   }
-  await refresh();
+}
+
+function stopAutoAccess() {
+  clearInterval(autoAccessTimer);
+  autoAccessTimer = null;
+  $("#autoAccessToggle").checked = false;
+  $("#cameraAccessButton").disabled = false;
+}
+
+async function autoAccessTick() {
+  if (frameActionPending || document.hidden) return;
+  const frame = captureFromWebcam();
+  if (!frame) return;
+  frameActionPending = true;
+  try {
+    await checkCameraAccess(frame, true);
+  } catch (error) {
+    stopAutoAccess();
+    toast(error.message);
+  } finally {
+    frameActionPending = false;
+  }
 }
 
 async function detect(silent = false) {
@@ -271,7 +357,35 @@ $("[data-device='door']").addEventListener("click", () => {
 $("#fanToggle").addEventListener("change", event => command({ device: "fan", action: event.target.checked ? "on" : "off" }));
 $("#lightSlider").addEventListener("input", event => $("#lightOutput").textContent = `${event.target.value}%`);
 $("#lightSlider").addEventListener("change", event => command({ device: "light", value: Number(event.target.value) }));
-$("#detectButton").addEventListener("click", detect);
+$("#detectButton").addEventListener("click", () => detect());
+$("#cameraAccessButton").addEventListener("click", () => useFrame(checkCameraAccess));
+$("#autoAccessToggle").addEventListener("change", event => {
+  if (!event.target.checked || !webcamStream) {
+    stopAutoAccess();
+    return;
+  }
+  if (autoAccessTimer !== null) return;
+  $("#cameraAccessButton").disabled = true;
+  autoAccessTimer = setInterval(autoAccessTick, 900);
+  autoAccessTick();
+});
+$("#savePhotoButton").addEventListener("click", () => useFrame(async frame => {
+  const result = await post("/api/captures", { image_data: frame });
+  $("#captureStatus").textContent = result.path;
+  toast("照片已保存");
+}));
+$("#historyForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  try {
+    const query = new URLSearchParams({ metric: $("#historyMetric").value, limit: "100" });
+    for (const [name, selector] of [["start", "#historyStart"], ["end", "#historyEnd"]]) {
+      const time = $(selector).value;
+      if (time) query.set(name, new Date(time).toISOString());
+    }
+    const rows = await api(`/api/history?${query}`);
+    $("#historyResults").innerHTML = rows.length ? rows.reverse().map(row => `<div class="admin-row"><strong>${esc(stateText(row.value))} ${esc(row.unit)}</strong><small>${new Date(row.recorded_at.replace(" ", "T") + "Z").toLocaleString()}</small></div>`).join("") : '<p class="section-note">所选时段没有记录</p>';
+  } catch (error) { toast(error.message); }
+});
 $("#addPersonButton").addEventListener("click", () => openPersonForm());
 $("#cancelPersonButton").addEventListener("click", closePersonForm);
 $("#personForm").addEventListener("submit", savePerson);
@@ -296,13 +410,28 @@ $("#imageInput").addEventListener("change", event => {
 });
 
 // ── 摄像头控制 ──────────────────────────────────────────
-async function startWebcam() {
+async function refreshCameraDevices() {
+  const selector = $("#cameraDevice");
+  const selected = webcamStream?.getVideoTracks()[0]?.getSettings().deviceId;
+  const devices = (await navigator.mediaDevices.enumerateDevices())
+    .filter(device => device.kind === "videoinput" && device.deviceId);
+  selector.replaceChildren(new Option("默认摄像头", ""), ...devices.map((device, index) =>
+    new Option(device.label || `摄像头 ${index + 1}`, device.deviceId)));
+  if (devices.some(device => device.deviceId === selected)) selector.value = selected;
+  selector.classList.toggle("hidden", devices.length < 2);
+}
+
+async function startWebcam(deviceId) {
+  if (cameraStarting) return;
+  cameraStarting = true;
   try {
     webcamStream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "environment" }
+      video: { width: { ideal: 640 }, height: { ideal: 480 },
+        ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "environment" }) }
     });
     const video = $("#webcamVideo");
     video.srcObject = webcamStream;
+    webcamStream.getVideoTracks()[0].addEventListener("ended", stopWebcam);
     video.style.display = "block";
     // 隐藏文件上传的背景图
     const view = $("#cameraView");
@@ -312,17 +441,24 @@ async function startWebcam() {
     $("#webcamButton").textContent = "🔴 关闭摄像头";
     $("#webcamButton").classList.add("active");
     $("#continuousButton").classList.remove("hidden");
+    $("#savePhotoButton").disabled = false;
+    $("#autoAccessToggle").disabled = !cameraFace;
     imageData = null;
     updateDetectButtonState();
     toast("摄像头已开启，可拍照或开启实时检测");
+    refreshCameraDevices().catch(() => {});
   } catch (error) {
     toast("无法访问摄像头: " + (error.name === "NotAllowedError" ? "请允许浏览器使用摄像头权限" : error.message));
     webcamStream = null;
+  } finally {
+    cameraStarting = false;
   }
 }
 
 function stopWebcam() {
   stopContinuous();
+  stopAutoAccess();
+  $("#autoAccessToggle").disabled = true;
   if (webcamStream) {
     webcamStream.getTracks().forEach(track => track.stop());
     webcamStream = null;
@@ -336,6 +472,8 @@ function stopWebcam() {
   $("#webcamButton").textContent = "📷 开启摄像头";
   $("#webcamButton").classList.remove("active");
   $("#continuousButton").classList.add("hidden");
+  $("#savePhotoButton").disabled = true;
+  $("#cameraDevice").classList.add("hidden");
   imageData = null;
   updateDetectButtonState();
 }
@@ -343,7 +481,7 @@ function stopWebcam() {
 function captureFromWebcam() {
   const video = $("#webcamVideo");
   const canvas = $("#webcamCanvas");
-  if (!video.videoWidth) return null;
+  if (!webcamStream || !video.videoWidth) return null;
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   const ctx = canvas.getContext("2d");
@@ -357,6 +495,14 @@ $("#webcamButton").addEventListener("click", () => {
   } else {
     startWebcam();
   }
+});
+$("#cameraDevice").addEventListener("change", event => {
+  if (!webcamStream || cameraStarting) return;
+  stopWebcam();
+  startWebcam(event.target.value);
+});
+navigator.mediaDevices?.addEventListener("devicechange", () => {
+  if (webcamStream) refreshCameraDevices().catch(() => {});
 });
 
 // ── 实时连续检测 ────────────────────────────────────────
@@ -428,6 +574,14 @@ $("#continuousButton").addEventListener("click", () => {
   refresh();
   fetchAlerts();
   setInterval(refresh, 15000);
+  if (realHardware) setInterval(async () => {
+    try {
+      const state = await api("/api/dashboard");
+      climateMode = state.climate.mode;
+      renderHome(state.home);
+      renderScore(state.home_score);
+    } catch (_) { $("#connectionText").textContent = "连接中断"; }
+  }, 1000);
   setInterval(fetchAlerts, 5000);  // poll alerts more frequently for near-real-time signals
 })();
 
@@ -509,7 +663,7 @@ renderHome = function(home) {
   _originalRenderHome(home);
   if (room3dReady && window.Room3D) {
     window.Room3D.updateDoor(home.door === 'open');
-    window.Room3D.updateLight(home.light);
+    window.Room3D.updateLight(home.light ?? 0);
     window.Room3D.updateFan(home.fan);
     window.Room3D.updateWindow(home.window);
   }

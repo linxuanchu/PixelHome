@@ -23,7 +23,7 @@ class PixelHomeLauncher:
         self.server_process = None
         self.url = ""
         root.title("Pixel Home")
-        root.geometry("700x280")
+        root.geometry("700x325")
         root.resizable(False, False)
         root.protocol("WM_DELETE_WINDOW", self.close)
 
@@ -61,6 +61,14 @@ class PixelHomeLauncher:
             state=yolo_state,
         ).pack(side="left", padx=16)
 
+        hardware = ttk.Frame(frame)
+        hardware.pack(fill="x", pady=(0, 12))
+        self.serial_port = tk.StringVar(value=os.getenv("PIXELHOME_SERIAL_PORT", ""))
+        self.use_camera_faces = tk.BooleanVar(value=(self.project_root() / "models" / "face" / "face_recognition_sface_2021dec.onnx").is_file())
+        ttk.Checkbutton(hardware, text="摄像头门禁", variable=self.use_camera_faces, state=yolo_state).pack(side="left")
+        ttk.Label(hardware, text="Arduino 串口（模拟时留空）").pack(side="left", padx=(14, 6))
+        ttk.Entry(hardware, textvariable=self.serial_port, width=12, state=yolo_state).pack(side="left")
+
         self.status = tk.StringVar(value="尚未启动")
         ttk.Label(frame, textvariable=self.status).pack(anchor="w", pady=(0, 14))
         buttons = ttk.Frame(frame)
@@ -72,7 +80,7 @@ class PixelHomeLauncher:
         ttk.Button(buttons, text="退出", command=self.close).pack(side="right")
         ttk.Label(
             frame,
-            text="双击打包程序会优先自动启动 hybrid 模式；硬件接口已预留。",
+            text="自动启动：Hybrid；实机可通过 PIXELHOME_SERIAL_PORT 预设串口。",
             foreground="#555555",
         ).pack(anchor="w", pady=(20, 0))
         if getattr(sys, "frozen", False):
@@ -93,7 +101,9 @@ class PixelHomeLauncher:
         if self.server_process:
             return self.open_ui()
         port = self.DEFAULT_PORT
-        if getattr(sys, "frozen", False) and self.mode.get() in {"yolo", "specialized", "hybrid"}:
+        if self.serial_port.get().strip() or self.use_camera_faces.get() or (
+            getattr(sys, "frozen", False) and self.mode.get() in {"yolo", "specialized", "hybrid"}
+        ):
             return self.start_external_server(port)
         try:
             self.server = build_server("127.0.0.1", port, vision_mode=self.mode.get())
@@ -112,10 +122,10 @@ class PixelHomeLauncher:
         self.open_button.configure(state="normal")
         self.root.after(250, self.open_ui)
 
-    def health_mode(self, port):
+    def health(self, port):
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=0.5) as response:
-                return json.loads(response.read().decode("utf-8")).get("mode")
+                return json.loads(response.read().decode("utf-8"))
         except Exception:
             return None
 
@@ -137,9 +147,12 @@ class PixelHomeLauncher:
 
     def start_external_server(self, port):
         mode = self.mode.get()
-        existing_mode = self.health_mode(port)
-        if existing_mode:
-            if existing_mode == mode:
+        serial_port = self.serial_port.get().strip()
+        camera_faces = bool(serial_port or self.use_camera_faces.get())
+        wanted = (mode, "arduino" if serial_port else "simulation", camera_faces)
+        existing = self.health(port)
+        if existing:
+            if (existing.get("mode"), existing.get("hardware"), existing.get("face_camera")) == wanted:
                 self.url = f"http://127.0.0.1:{port}/"
                 self.status.set(f"系统运行中：{self.url}（{mode}）")
                 self.start_button.configure(state="disabled")
@@ -147,7 +160,7 @@ class PixelHomeLauncher:
                 return self.open_ui()
             messagebox.showerror(
                 "启动失败",
-                f"8000端口已有 PixelHome 服务运行，当前模式是 {existing_mode}。\n\n"
+                f"8000端口已有 PixelHome 服务运行，当前模式是 {existing.get('mode')}。\n\n"
                 f"请先关闭旧服务，再启动 {mode} 模式。",
             )
             return
@@ -160,40 +173,47 @@ class PixelHomeLauncher:
         if not command:
             messagebox.showerror("启动失败", "未找到 python，请先安装 Python 并配置到 PATH。")
             return
+        if camera_faces:
+            command += ["--face-model-dir", "models/face"]
+        if serial_port:
+            command += ["--serial-port", serial_port]
 
         log_path = self.project_root() / "data" / "pixel_home_ai.log"
         log_path.parent.mkdir(exist_ok=True)
-        log_file = log_path.open("a", encoding="utf-8")
         env = dict(os.environ)
         vision_deps = self.project_root() / ".vision-deps"
         if vision_deps.is_dir():
             current_pythonpath = env.get("PYTHONPATH")
             env["PYTHONPATH"] = str(vision_deps) if not current_pythonpath else f"{vision_deps}{os.pathsep}{current_pythonpath}"
-        self.server_process = subprocess.Popen(
-            command,
-            cwd=self.project_root(),
-            stdout=log_file,
-            stderr=subprocess.STDOUT,
-            env=env,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
+        with log_path.open("a", encoding="utf-8") as log_file:
+            self.server_process = subprocess.Popen(
+                command,
+                cwd=self.project_root(),
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                env=env,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
 
         for _ in range(80):
             if self.server_process.poll() is not None:
                 self.server_process = None
                 messagebox.showerror("启动失败", f"{mode} 模式启动失败，请查看日志：{log_path}")
                 return
-            if self.health_mode(port) == mode:
+            health = self.health(port) or {}
+            if (health.get("mode"), health.get("hardware"), health.get("face_camera")) == wanted:
                 self.url = f"http://127.0.0.1:{port}/"
                 self.status.set(f"系统运行中：{self.url}（{mode}）")
                 self.start_button.configure(state="disabled")
                 self.open_button.configure(state="normal")
                 return self.open_ui()
             time.sleep(0.25)
+        self.server_process.terminate()
+        self.server_process = None
         messagebox.showerror("启动失败", f"{mode} 模式启动超时，请查看日志：{log_path}")
 
     def open_ui(self):
-        if self.url:
+        if self.url and os.getenv("PIXELHOME_NO_BROWSER") != "1":
             webbrowser.open(self.url)
 
     def close(self):
